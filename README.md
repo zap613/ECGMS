@@ -84,7 +84,7 @@ Server-side technologies:
 - Database: SQL Server / MySQL
 
 Client-side technologies:
-- Web Client: ReactJS, HTML5, CSS3, Javascript (Vite)
+- Web Client: NextJS, HTML5, CSS3, Typescript (Vite)
 
 Additional Requirements:
 - Import/Export Excel support (for student and admin data).
@@ -137,7 +137,7 @@ npm install
 npm run dev
 ```
 
-Dev server: http://localhost:5173/
+Dev server: http://localhost:3000/
 
 Scripts:
 - `npm run dev` — start Vite dev server
@@ -145,7 +145,7 @@ Scripts:
 - `npm run preview` — preview production build
 
 ## Planned Architecture
-- Frontend: React + Vite (TypeScript)
+- Frontend: Next + Vite (TypeScript)
 - Backend: ASP.NET Core Web API
 - Database: SQL Server / MySQL
 - Auth: JWT, role-based access control
