@@ -1,0 +1,43 @@
+import type { Course } from "@/types"
+
+export const mockCourses: Course[] = [
+  {
+    courseId: "C001",
+    courseName: "EXE102 - Experiential Entrepreneurship 2",
+    courseCode: "EXE102",
+    description: "Advanced entrepreneurship course focusing on real-world project execution and team collaboration.",
+    lecturerId: "L001",
+    lecturerName: "Dr. Nguyen Van A",
+    semester: "Spring",
+    year: 2025,
+    maxGroupSize: 6,
+    minGroupSize: 2,
+    createdAt: "2025-01-15T08:00:00Z",
+  },
+  {
+    courseId: "C002",
+    courseName: "SWP391 - Software Development Project",
+    courseCode: "SWP391",
+    description: "Practical software development project with industry standards and agile methodologies.",
+    lecturerId: "L001",
+    lecturerName: "Dr. Nguyen Van A",
+    semester: "Spring",
+    year: 2025,
+    maxGroupSize: 5,
+    minGroupSize: 3,
+    createdAt: "2025-01-10T08:00:00Z",
+  },
+  {
+    courseId: "C003",
+    courseName: "PRJ301 - Java Web Application Development",
+    courseCode: "PRJ301",
+    description: "Building enterprise web applications using Java technologies and frameworks.",
+    lecturerId: "L002",
+    lecturerName: "Dr. Tran Thi B",
+    semester: "Spring",
+    year: 2025,
+    maxGroupSize: 4,
+    minGroupSize: 2,
+    createdAt: "2025-01-12T08:00:00Z",
+  },
+]
