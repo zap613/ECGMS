@@ -20,21 +20,28 @@ export default function LoginPage() {
     e.preventDefault()
     setError("")
 
+    console.log("Login attempt:", { username, password })
+
     const user = authenticateUser(username, password)
+    console.log("Authenticated user:", user)
 
     if (user) {
       // Store user data in localStorage (will be replaced with proper auth later)
       localStorage.setItem("currentUser", JSON.stringify(user))
+      console.log("User stored in localStorage")
 
       // Redirect based on role
       switch (user.role) {
         case "lecturer":
+          console.log("Redirecting to lecturer dashboard")
           router.push("/lecturer/dashboard")
           break
         case "student":
+          console.log("Redirecting to student dashboard")
           router.push("/student/dashboard")
           break
         case "admin":
+          console.log("Redirecting to admin dashboard")
           router.push("/admin/dashboard")
           break
         default:
@@ -42,6 +49,7 @@ export default function LoginPage() {
       }
     } else {
       setError("Invalid username or password")
+      console.log("Authentication failed")
     }
   }
 
