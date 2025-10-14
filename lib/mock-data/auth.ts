@@ -1,15 +1,5 @@
 // Mock user data - Replace with API calls later
-export interface User {
-  userId: string
-  username: string
-  fullName: string
-  email: string
-  role: "lecturer" | "student" | "admin"
-  major?: "SS" | "SE" // Software Engineering or Software Systems
-  skillSet?: string[]
-  birthday?: string
-  contactInfo?: string
-}
+import type { User } from "@/lib/types"
 
 export const mockUsers: User[] = [
   {

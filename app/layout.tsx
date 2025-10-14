@@ -5,9 +5,9 @@ import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'v0 App',
-  description: 'Created with v0',
-  generator: 'v0.app',
+  title: 'ECGMS - EXE Course Grouping Management System',
+  description: 'EXE Course Grouping Management System for FPTU Campus - Streamline and automate the grouping process for experiential education courses',
+  generator: 'Next.js',
 }
 
 export default function RootLayout({

@@ -1,13 +1,5 @@
 // Mock course data - Replace with API calls later
-export interface Course {
-  courseId: string
-  courseCode: string
-  courseName: string
-  semester: string
-  year: number
-  lecturerId: string
-  description?: string
-}
+import type { Course } from "@/lib/types"
 
 export const mockCourses: Course[] = [
   {
