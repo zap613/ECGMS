@@ -1,8 +1,8 @@
+// app/(dashboard)/admin/courses/page.tsx
 "use client"
 
 import * as React from "react"
 import { PlusCircle, MoreHorizontal, Trash2, Edit } from "lucide-react"
-
 import { DashboardLayout } from "@/components/layouts/dashboard-layout"
 import { Button } from "@/components/ui/button"
 import {
@@ -26,48 +26,40 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { CourseFormDialog } from "@/components/features/course/CourseFormDialog"
 import { CourseInitializationWizard } from "@/components/features/course/CourseInitializationWizard"
-import { mockCourses } from "@/lib/mock-data/courses" // Dùng tạm dữ liệu giả
+// import { CourseFormDialog } from "@/components/features/course/CourseFormDialog" // Tạm ẩn vì chưa tạo file
+import { mockSummer2025Courses } from "@/lib/mock-data/summer2025-data" // Thay đổi import
 import type { Course } from "@/lib/types"
 
 export default function AdminCoursesPage() {
-  const [courses, setCourses] = React.useState<Course[]>(mockCourses);
-  const [isDialogOpen, setIsDialogOpen] = React.useState(false);
+  // Sử dụng dữ liệu mới
+  const [courses, setCourses] = React.useState<Course[]>(mockSummer2025Courses);
+  const [isWizardOpen, setIsWizardOpen] = React.useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
   const [editingCourse, setEditingCourse] = React.useState<Course | null>(null);
-
-  const handleAddCourse = () => {
-    setEditingCourse(null);
-    setIsDialogOpen(true);
-  };
 
   const handleEditCourse = (course: Course) => {
     setEditingCourse(course);
-    setIsDialogOpen(true);
+    setIsEditDialogOpen(true);
   };
-  
+
   const handleDeleteCourse = (courseId: string) => {
     if (confirm("Bạn có chắc chắn muốn xóa khóa học này không?")) {
-      // TODO: Call API to delete course
       setCourses(courses.filter((c) => c.courseId !== courseId));
       console.log("Deleted course:", courseId);
     }
   };
 
-  const handleSaveCourse = (courseData: Course) => {
-    // TODO: Call API to create/update course
-    if (editingCourse) {
-      // Update logic
-      setCourses(courses.map((c) => (c.courseId === courseData.courseId ? courseData : c)));
-      console.log("Updated course:", courseData);
-    } else {
-      // Create logic
-      const newCourse = { ...courseData, courseId: `C00${courses.length + 1}` };
-      setCourses([...courses, newCourse]);
-      console.log("Created course:", newCourse);
-    }
+  const handleUpdateCourse = (courseData: Course) => {
+    setCourses(courses.map((c) => (c.courseId === courseData.courseId ? courseData : c)));
+    console.log("Updated course:", courseData);
+    setIsEditDialogOpen(false);
   };
 
+  const handleInitializationComplete = (newCourses: Course[]) => {
+    setCourses(prevCourses => [...prevCourses, ...newCourses]);
+    console.log("Initialization complete, new courses added:", newCourses);
+  };
 
   return (
     <DashboardLayout role="admin">
@@ -75,27 +67,27 @@ export default function AdminCoursesPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Quản lý Khóa học</h1>
-            <p className="text-gray-600 mt-1">Tạo, chỉnh sửa, và xóa các khóa học trong hệ thống.</p>
+            <p className="text-gray-600 mt-1">Khởi tạo kỳ học, phân chia lớp và quản lý các khóa học.</p>
           </div>
-          <Button onClick={handleAddCourse}>
+          <Button onClick={() => setIsWizardOpen(true)}>
             <PlusCircle className="w-4 h-4 mr-2" />
-            Tạo Khóa học mới
+            Khởi tạo Kỳ học mới
           </Button>
         </div>
 
         <Card>
           <CardHeader>
-            <CardTitle>Danh sách Khóa học</CardTitle>
+            <CardTitle>Danh sách Lớp học</CardTitle>
             <CardDescription>
-              Tổng số {courses.length} khóa học.
+              Tổng số {courses.length} lớp học đang hoạt động.
             </CardDescription>
           </CardHeader>
           <CardContent>
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Mã môn</TableHead>
-                  <TableHead>Tên môn học</TableHead>
+                  <TableHead>Mã lớp</TableHead>
+                  <TableHead>Tên lớp</TableHead>
                   <TableHead>Học kỳ</TableHead>
                   <TableHead>Năm</TableHead>
                   <TableHead className="text-right">Hành động</TableHead>
@@ -120,7 +112,7 @@ export default function AdminCoursesPage() {
                             <Edit className="mr-2 h-4 w-4" />
                             Chỉnh sửa
                           </DropdownMenuItem>
-                          <DropdownMenuItem 
+                          <DropdownMenuItem
                             className="text-destructive"
                             onClick={() => handleDeleteCourse(course.courseId)}
                           >
@@ -138,12 +130,20 @@ export default function AdminCoursesPage() {
         </Card>
       </div>
 
-      <CourseFormDialog
-        isOpen={isDialogOpen}
-        onClose={() => setIsDialogOpen(false)}
-        onSave={handleSaveCourse}
-        course={editingCourse}
+      <CourseInitializationWizard
+        isOpen={isWizardOpen}
+        onClose={() => setIsWizardOpen(false)}
+        onComplete={handleInitializationComplete}
       />
+      
+      {/* // Để chức năng "Chỉnh sửa" hoạt động, bạn cần tạo file CourseFormDialog.tsx
+      <CourseFormDialog
+        isOpen={isEditDialogOpen}
+        onClose={() => setIsEditDialogOpen(false)}
+        onSave={handleUpdateCourse}
+        course={editingCourse}
+      /> 
+      */}
     </DashboardLayout>
   )
 }

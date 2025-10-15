@@ -1,3 +1,4 @@
+// lib/mock-data/groups.ts
 // Mock group data - Replace with API calls later
 import type { Group, GroupMember } from "@/lib/types"
 
