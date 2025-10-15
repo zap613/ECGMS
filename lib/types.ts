@@ -4,15 +4,16 @@
 
 // ===== USER & AUTHENTICATION TYPES =====
 export interface User {
-  userId: string
-  username: string
-  fullName: string
-  email: string
-  role: "lecturer" | "student" | "admin"
-  major?: "SS" | "SE" // Software Engineering or Software Systems
-  skillSet?: string[]
-  birthday?: string
-  contactInfo?: string
+  userId: string;
+  username: string;
+  fullName: string;
+  email: string;
+  role: "lecturer" | "student" | "admin";
+  major?: "SS" | "SE";
+  skillSet?: string[];
+  birthday?: string;
+  contactInfo?: string;
+  groupId?: string | null; // <-- THÊM DÒNG NÀY: null hoặc undefined nghĩa là chưa có nhóm
 }
 
 // ===== COURSE TYPES =====

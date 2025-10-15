@@ -64,6 +64,7 @@ export const mockUsers: User[] = [
     skillSet: ["Frontend", "React", "TypeScript"],
     birthday: "2003-01-06",
     contactInfo: "0912345678",
+    groupId: "SUM25-C01-G01", // <-- ĐÃ CÓ NHÓM
   },
   {
     userId: "S001",
@@ -75,6 +76,7 @@ export const mockUsers: User[] = [
     skillSet: ["Frontend", "React", "TypeScript"],
     birthday: "2003-05-15",
     contactInfo: "0912345678",
+    groupId: null, // <-- CHƯA CÓ NHÓM
   },
   {
     userId: "S002",
@@ -86,6 +88,7 @@ export const mockUsers: User[] = [
     skillSet: ["Backend", "Node.js", "Database"],
     birthday: "2003-08-20",
     contactInfo: "0923456789",
+    groupId: "SUM25-C01-G01", // <-- Cùng nhóm với Giáp
   },
   {
     userId: "S003",
