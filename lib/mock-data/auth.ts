@@ -55,6 +55,17 @@ export const mockUsers: User[] = [
   },
   // STUDENTS (5)
   {
+    userId: "SE171532",
+    username: "zap",
+    fullName: "Hồ Nguyên Giáp",
+    email: "giaphnse171532@fpt.edu.vn",
+    role: "student",
+    major: "SE",
+    skillSet: ["Frontend", "React", "TypeScript"],
+    birthday: "2003-01-06",
+    contactInfo: "0912345678",
+  },
+  {
     userId: "S001",
     username: "student1",
     fullName: "Tran Thi B",

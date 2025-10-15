@@ -1,3 +1,4 @@
+// lib/types.ts
 // Centralized type definitions for ECGMS
 // This file contains all TypeScript interfaces and types used throughout the application
 
@@ -27,26 +28,31 @@ export interface Course {
 
 // ===== GROUP TYPES =====
 export interface Group {
-  groupId: string
-  groupName: string
-  courseId: string
-  courseCode: string
-  memberCount: number
-  leaderName: string
-  leaderId: string
-  status: "active" | "inactive"
-  majors: string[]
-  createdDate: string
+  groupId: string;
+  groupName: string;
+  courseId: string;
+  courseCode: string;
+  memberCount: number;
+  maxMembers: number; // Thêm số lượng thành viên tối đa
+  leaderName: string;
+  leaderId: string;
+  status: "open" | "lock" | "finalize" | "private"; // Cập nhật trạng thái
+  majors: ("SE" | "SS")[];
+  createdDate: string;
+  members: GroupMember[]; // Thêm danh sách thành viên
+  needs: GroupNeeds[]; // Thêm nhu cầu tuyển dụng
+  isLockedByRule?: boolean; // Thêm cờ cho business rule "lock nhóm khi có 3 TV"
 }
 
 export interface GroupMember {
-  memberId: string
-  groupId: string
-  studentId: string
-  studentName: string
-  role: "leader" | "member" | "secretary"
-  major: "SE" | "SS"
-  skillSet: string[]
+  userId: string;
+  fullName: string;
+  avatarUrl?: string; // Thêm avatar để hiển thị
+}
+
+export interface GroupNeeds {
+  major: "SE" | "SS";
+  count: number;
 }
 
 // ===== GRADE TYPES =====
