@@ -1,4 +1,4 @@
-import type { User } from "@/lib/mock-data/auth"
+import type { User } from "@/lib/types"
 
 // Utility functions for authentication - Replace with proper auth later
 export function getCurrentUser(): User | null {

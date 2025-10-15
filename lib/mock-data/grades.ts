@@ -1,14 +1,5 @@
 // Mock grade data - Replace with API calls later
-export interface GradeItem {
-  gradeItemId: string
-  courseId: string
-  courseCode: string
-  itemName: string
-  maxScore: number
-  weight: number // percentage
-  type: "group" | "individual"
-  description?: string
-}
+import type { GradeItem, Grade } from "@/lib/types"
 
 export const mockGradeItems: GradeItem[] = [
   {
@@ -53,16 +44,6 @@ export const mockGradeItems: GradeItem[] = [
   },
 ]
 
-export interface Grade {
-  gradeId: string
-  gradeItemId: string
-  studentId?: string
-  groupId?: string
-  score: number
-  feedback?: string
-  gradedBy: string
-  gradedDate: string
-}
 
 export const mockGrades: Grade[] = [
   {

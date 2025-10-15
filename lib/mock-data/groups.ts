@@ -1,16 +1,6 @@
+// lib/mock-data/groups.ts
 // Mock group data - Replace with API calls later
-export interface Group {
-  groupId: string
-  groupName: string
-  courseId: string
-  courseCode: string
-  memberCount: number
-  leaderName: string
-  leaderId: string
-  status: "active" | "inactive"
-  majors: string[]
-  createdDate: string
-}
+import type { Group, GroupMember } from "@/lib/types"
 
 export const mockGroups: Group[] = [
   {
@@ -51,15 +41,6 @@ export const mockGroups: Group[] = [
   },
 ]
 
-export interface GroupMember {
-  memberId: string
-  groupId: string
-  studentId: string
-  studentName: string
-  role: "leader" | "member" | "secretary"
-  major: "SE" | "SS"
-  skillSet: string[]
-}
 
 export const mockGroupMembers: GroupMember[] = [
   {

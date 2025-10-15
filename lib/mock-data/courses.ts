@@ -1,13 +1,6 @@
+// lib/mock-data/courses.ts
 // Mock course data - Replace with API calls later
-export interface Course {
-  courseId: string
-  courseCode: string
-  courseName: string
-  semester: string
-  year: number
-  lecturerId: string
-  description?: string
-}
+import type { Course } from "@/lib/types"
 
 export const mockCourses: Course[] = [
   {
@@ -36,6 +29,51 @@ export const mockCourses: Course[] = [
     year: 2025,
     lecturerId: "L001",
     description: "Full-stack software development project",
+  },
+  {
+    courseId: "C004",
+    courseCode: "DBI202",
+    courseName: "Database Systems",
+    semester: "Summer",
+    year: 2025,
+    lecturerId: "L002",
+    description: "Fundamentals of database design and SQL.",
+  },
+  {
+    courseId: "C005",
+    courseCode: "CSD201",
+    courseName: "Data Structures and Algorithms",
+    semester: "Summer",
+    year: 2025,
+    lecturerId: "L003",
+    description: "Core concepts in data structures and algorithm analysis.",
+  },
+  {
+    courseId: "C006",
+    courseCode: "MAD101",
+    courseName: "Mobile Application Development",
+    semester: "Fall",
+    year: 2025,
+    lecturerId: "L002",
+    description: "Introduction to building applications for Android and iOS.",
+  },
+  {
+    courseId: "C007",
+    courseCode: "IOT102",
+    courseName: "Internet of Things",
+    semester: "Fall",
+    year: 2025,
+    lecturerId: "L003",
+    description: "Developing applications for IoT devices.",
+  },
+  {
+    courseId: "C008",
+    courseCode: "NWC203c",
+    courseName: "Computer Networking",
+    semester: "Spring",
+    year: 2025,
+    lecturerId: "L001",
+    description: "Understanding network protocols and layers.",
   },
 ]
 

@@ -1,17 +1,5 @@
 // Mock task data - Replace with API calls later
-export interface Task {
-  taskId: string
-  taskName: string
-  description: string
-  groupId: string
-  groupName: string
-  assignedTo: string
-  assignedToId: string
-  status: "pending" | "in-progress" | "completed"
-  priority: "low" | "medium" | "high"
-  dueDate: string
-  createdDate: string
-}
+import type { Task } from "@/lib/types"
 
 export const mockTasks: Task[] = [
   {
