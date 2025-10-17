@@ -1,7 +1,8 @@
 // Group service - Replace mock data with actual API calls
-import type { Group, GroupMember } from "@/lib/types"
+import type { Group, GroupMember, GroupApprovalAction } from "@/lib/types";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
 
 export class GroupService {
   // Get all groups
@@ -9,10 +10,10 @@ export class GroupService {
     // TODO: Replace with actual API call
     // const response = await fetch(`${API_BASE_URL}/groups`)
     // return response.json()
-    
+
     // Mock implementation for now
-    const mockGroups = await import("@/lib/mock-data/groups")
-    return mockGroups.mockGroups
+    const mockGroups = await import("@/lib/mock-data/groups");
+    return mockGroups.mockGroups;
   }
 
   // Get group by ID
@@ -20,10 +21,10 @@ export class GroupService {
     // TODO: Replace with actual API call
     // const response = await fetch(`${API_BASE_URL}/groups/${groupId}`)
     // return response.json()
-    
+
     // Mock implementation for now
-    const mockGroups = await import("@/lib/mock-data/groups")
-    return mockGroups.mockGroups.find(g => g.groupId === groupId) || null
+    const mockGroups = await import("@/lib/mock-data/groups");
+    return mockGroups.mockGroups.find((g) => g.groupId === groupId) || null;
   }
 
   // Get group members
@@ -31,39 +32,109 @@ export class GroupService {
     // TODO: Replace with actual API call
     // const response = await fetch(`${API_BASE_URL}/groups/${groupId}/members`)
     // return response.json()
-    
+
     // Mock implementation for now
-    const mockGroups = await import("@/lib/mock-data/groups")
-    return mockGroups.mockGroupMembers.filter(m => m.groupId === groupId)
+    const mockGroups = await import("@/lib/mock-data/groups");
+    return mockGroups.mockGroupMembers.filter((m) => m.groupId === groupId);
+  }
+
+  // Get groups by course ID
+  static async getGroupsByCourseId(courseId: string): Promise<Group[]> {
+    // TODO: Replace with actual API call
+    // const response = await fetch(`${API_BASE_URL}/courses/${courseId}/groups`)
+    // return response.json()
+
+    // Mock implementation for now
+    const mockGroups = await import("@/lib/mock-data/groups");
+    return mockGroups.mockGroups.filter((g) => g.courseId === courseId);
+  }
+
+  // Approve group
+  static async approveGroup(
+    groupId: string,
+    approvedBy: string
+  ): Promise<void> {
+    // TODO: Replace with actual API call
+    // await fetch(`${API_BASE_URL}/groups/${groupId}/approve`, {
+    //   method: 'POST',
+    //   headers: { 'Content-Type': 'application/json' },
+    //   body: JSON.stringify({ approvedBy })
+    // })
+
+    // Mock implementation for now
+    console.log(`Mock: Approving group ${groupId} by ${approvedBy}`);
+  }
+
+  // Reject group
+  static async rejectGroup(
+    groupId: string,
+    reason: string,
+    rejectedBy: string
+  ): Promise<void> {
+    // TODO: Replace with actual API call
+    // await fetch(`${API_BASE_URL}/groups/${groupId}/reject`, {
+    //   method: 'POST',
+    //   headers: { 'Content-Type': 'application/json' },
+    //   body: JSON.stringify({ reason, rejectedBy })
+    // })
+
+    // Mock implementation for now
+    console.log(
+      `Mock: Rejecting group ${groupId} by ${rejectedBy}. Reason: ${reason}`
+    );
+  }
+
+  // Get groups by lecturer
+  static async getGroupsByLecturer(lecturerId: string): Promise<Group[]> {
+    // TODO: Replace with actual API call
+    // const response = await fetch(`${API_BASE_URL}/lecturers/${lecturerId}/groups`)
+    // return response.json()
+
+    // Mock implementation for now
+    const mockGroups = await import("@/lib/mock-data/groups");
+    const mockCourses = await import("@/lib/mock-data/courses");
+    const courseIds = mockCourses.mockCourses
+      .filter((c) => c.lecturerId === lecturerId)
+      .map((c) => c.courseId);
+    return mockGroups.mockGroups.filter((g) => courseIds.includes(g.courseId));
   }
 
   // Create new group
-  static async createGroup(group: Omit<Group, 'groupId'>): Promise<Group> {
+  static async createGroup(group: Omit<Group, "groupId">): Promise<Group> {
     // TODO: Replace with actual API call
-    throw new Error("Not implemented")
+    throw new Error("Not implemented");
   }
 
   // Update group
-  static async updateGroup(groupId: string, group: Partial<Group>): Promise<Group> {
+  static async updateGroup(
+    groupId: string,
+    group: Partial<Group>
+  ): Promise<Group> {
     // TODO: Replace with actual API call
-    throw new Error("Not implemented")
+    throw new Error("Not implemented");
   }
 
   // Delete group
   static async deleteGroup(groupId: string): Promise<void> {
     // TODO: Replace with actual API call
-    throw new Error("Not implemented")
+    throw new Error("Not implemented");
   }
 
   // Add member to group
-  static async addMemberToGroup(groupId: string, studentId: string): Promise<GroupMember> {
+  static async addMemberToGroup(
+    groupId: string,
+    studentId: string
+  ): Promise<GroupMember> {
     // TODO: Replace with actual API call
-    throw new Error("Not implemented")
+    throw new Error("Not implemented");
   }
 
   // Remove member from group
-  static async removeMemberFromGroup(groupId: string, studentId: string): Promise<void> {
+  static async removeMemberFromGroup(
+    groupId: string,
+    studentId: string
+  ): Promise<void> {
     // TODO: Replace with actual API call
-    throw new Error("Not implemented")
+    throw new Error("Not implemented");
   }
 }
