@@ -35,6 +35,7 @@ import { getCurrentUser } from "@/lib/utils/auth";
 import { mockGroups } from "@/lib/mock-data/groups";
 import { mockUsers } from "@/lib/mock-data/auth";
 import { useToast } from "@/lib/hooks/use-toast";
+import { GroupService } from "@/lib/api/groupService";
 
 export default function GroupDetailPage() {
   const router = useRouter();
@@ -164,11 +165,14 @@ export default function GroupDetailPage() {
   };
 
   const handleApprove = () => {
-    toast({
-      title: "Phê duyệt nhóm",
-      description: `Đã phê duyệt nhóm ${group.groupName}`,
-    });
-    // In real app, this would call API to approve group
+    GroupService.approveGroup(group.groupId, user.userId)
+      .then(() =>
+        toast({
+          title: "Phê duyệt nhóm",
+          description: `Đã phê duyệt nhóm ${group.groupName}`,
+        })
+      )
+      .catch(() => toast({ title: "Lỗi", description: "Không thể phê duyệt" }));
   };
 
   const handleReject = () => {
@@ -180,10 +184,14 @@ export default function GroupDetailPage() {
       return;
     }
 
-    toast({
-      title: "Từ chối nhóm",
-      description: `Đã từ chối nhóm ${group.groupName}`,
-    });
+    GroupService.rejectGroup(group.groupId, rejectionReason, user.userId)
+      .then(() =>
+        toast({
+          title: "Từ chối nhóm",
+          description: `Đã từ chối nhóm ${group.groupName}`,
+        })
+      )
+      .catch(() => toast({ title: "Lỗi", description: "Không thể từ chối" }));
     setShowRejectDialog(false);
     setRejectionReason("");
     // In real app, this would call API to reject group with reason
@@ -370,11 +378,149 @@ export default function GroupDetailPage() {
                             ))}
                           </div>
                         </div>
+                        <div className="mt-3 flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              const reason = prompt("Lý do xóa thành viên?");
+                              if (!reason) return;
+                              GroupService.removeMember({
+                                groupId: group.groupId,
+                                studentId: member.userId,
+                                reason,
+                                changedBy: user.userId,
+                                changedAt: new Date().toISOString(),
+                              })
+                                .then(() =>
+                                  toast({
+                                    title: "Đã xóa thành viên",
+                                    description: member.fullName,
+                                  })
+                                )
+                                .catch(() =>
+                                  toast({
+                                    title: "Lỗi",
+                                    description: "Không thể xóa",
+                                  })
+                                );
+                            }}
+                          >
+                            Xóa thành viên
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              const scoreStr = prompt("Điểm đóng góp (0-100)?");
+                              if (!scoreStr) return;
+                              const score = Number(scoreStr);
+                              if (Number.isNaN(score)) return;
+                              GroupService.setContributionScore({
+                                groupId: group.groupId,
+                                studentId: member.userId,
+                                score,
+                              })
+                                .then(() =>
+                                  toast({
+                                    title: "Đã ghi nhận đóng góp",
+                                    description: `${member.fullName}: ${score}`,
+                                  })
+                                )
+                                .catch(() =>
+                                  toast({
+                                    title: "Lỗi",
+                                    description: "Không thể lưu điểm",
+                                  })
+                                );
+                            }}
+                          >
+                            Ghi điểm đóng góp
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   </CardContent>
                 </Card>
               ))}
+            </div>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  const studentId = prompt(
+                    "Nhập mã SV cần thêm (chưa có nhóm)"
+                  );
+                  const reason = prompt("Lý do thêm vào nhóm?");
+                  if (!studentId || !reason) return;
+                  GroupService.addMember({
+                    groupId: group.groupId,
+                    studentId,
+                    reason,
+                    changedBy: user.userId,
+                    changedAt: new Date().toISOString(),
+                  })
+                    .then(() =>
+                      toast({
+                        title: "Đã thêm thành viên",
+                        description: studentId,
+                      })
+                    )
+                    .catch(() =>
+                      toast({ title: "Lỗi", description: "Không thể thêm" })
+                    );
+                }}
+              >
+                Thêm thành viên chưa có nhóm
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  const proposal = prompt(
+                    "Đề xuất điều chỉnh (tách/ghép/đổi thành viên...)"
+                  );
+                  if (!proposal) return;
+                  GroupService.proposeAdjustment({
+                    groupId: group.groupId,
+                    proposal,
+                    proposedBy: user.userId,
+                    proposedAt: new Date().toISOString(),
+                  })
+                    .then(() =>
+                      toast({ title: "Đã gửi đề xuất", description: proposal })
+                    )
+                    .catch(() =>
+                      toast({
+                        title: "Lỗi",
+                        description: "Không thể gửi đề xuất",
+                      })
+                    );
+                }}
+              >
+                Đề xuất điều chỉnh nhóm
+              </Button>
+              <Button
+                className={`${
+                  group.ready
+                    ? "bg-green-600 hover:bg-green-700"
+                    : "bg-gray-700 hover:bg-gray-800"
+                }`}
+                onClick={() => {
+                  const next = !group.ready;
+                  GroupService.markGroupReady(group.groupId, next, user.userId)
+                    .then(() =>
+                      toast({
+                        title: next ? "Đánh dấu sẵn sàng" : "Bỏ sẵn sàng",
+                        description: group.groupName,
+                      })
+                    )
+                    .catch(() =>
+                      toast({ title: "Lỗi", description: "Không thể cập nhật" })
+                    );
+                }}
+              >
+                {group.ready ? "Đã sẵn sàng" : "Đánh dấu sẵn sàng"}
+              </Button>
             </div>
           </CardContent>
         </Card>
