@@ -1,4 +1,3 @@
-//  components/features/group/GroupCard.tsx
 "use client"
 
 import type { Group } from "@/lib/types"
@@ -7,7 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Users, Lock, LogIn, Send, Check } from "lucide-react"
+import { Users, Lock, LogIn, Send, Check, Loader2 } from "lucide-react"
 
 const statusConfig = {
   open: { text: "Đang mở", variant: "secondary", icon: <LogIn className="w-3 h-3" /> },
@@ -16,9 +15,25 @@ const statusConfig = {
   private: { text: "Riêng tư", variant: "outline", icon: <Lock className="w-3 h-3" /> },
 }
 
-export function GroupCard({ group }: { group: Group }) {
+// Thêm props mới
+interface GroupCardProps {
+  group: Group;
+  onJoin: (groupId: string) => void;
+  onApply: (groupId: string) => void;
+  isJoining?: boolean; // Trạng thái đang xử lý
+}
+
+export function GroupCard({ group, onJoin, onApply, isJoining = false }: GroupCardProps) {
   const { text, variant, icon } = statusConfig[group.status] || statusConfig.open
   const memberPercentage = (group.memberCount / group.maxMembers) * 100
+
+  const handleJoinClick = () => {
+    onJoin(group.groupId);
+  }
+
+  const handleApplyClick = () => {
+    onApply(group.groupId);
+  }
 
   return (
     <Card className="flex flex-col">
@@ -45,7 +60,7 @@ export function GroupCard({ group }: { group: Group }) {
           {group.needs.length > 0 && (
             <div>
               <p className="text-xs font-semibold mb-2">Đang tìm kiếm:</p>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 {group.needs.map((need, index) => (
                   <Badge key={index} variant="outline">
                     {need.count} {need.major}
@@ -76,8 +91,18 @@ export function GroupCard({ group }: { group: Group }) {
         </div>
       </CardContent>
       <CardFooter>
-        {group.status === "open" && <Button className="w-full">Tham gia ngay</Button>}
-        {group.status === "lock" && <Button variant="secondary" className="w-full">Nộp đơn ứng tuyển</Button>}
+        {group.status === "open" && (
+          <Button className="w-full" onClick={handleJoinClick} disabled={isJoining}>
+            {isJoining && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+            Tham gia ngay
+          </Button>
+        )}
+        {group.status === "lock" && (
+          <Button variant="secondary" className="w-full" onClick={handleApplyClick} disabled={isJoining}>
+             {isJoining && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+            Nộp đơn ứng tuyển
+          </Button>
+        )}
         {group.status === "finalize" && <Button disabled variant="outline" className="w-full">Nhóm đã chốt</Button>}
         {group.status === "private" && <Button disabled variant="outline" className="w-full">Chỉ dành cho thành viên được mời</Button>}
       </CardFooter>

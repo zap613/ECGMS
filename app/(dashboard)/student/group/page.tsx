@@ -1,4 +1,3 @@
-// app/(dashboard)/student/group/page.tsx
 "use client"
 
 import * as React from "react"
@@ -6,27 +5,89 @@ import { useRouter } from "next/navigation"
 import { DashboardLayout } from "@/components/layouts/dashboard-layout"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Users, UserPlus, Settings, Filter, PlusCircle, LogOut } from "lucide-react"
+import { Users, UserPlus, Settings, Filter, PlusCircle, LogOut, Loader2, AlertCircle } from "lucide-react"
 import { mockSummer2025Groups } from "@/lib/mock-data/summer2025-data"
-import { getCurrentUser } from "@/lib/utils/auth"
+import { getCurrentUser, updateCurrentUser } from "@/lib/utils/auth" // Import thêm updateCurrentUser
 import { GroupCard } from "@/components/features/group/GroupCard"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import type { User, Group } from "@/lib/types"
+import { GroupService } from "@/lib/api/groupService" // Import service
 
 export default function MyGroupPage() {
   const router = useRouter();
-  // Lấy thông tin người dùng hiện tại từ localStorage
-  const currentUser = getCurrentUser();
+  
+  const [isLoading, setIsLoading] = React.useState(true);
+  const [isJoining, setIsJoining] = React.useState(false); // State cho hành động join
+  const [currentUser, setCurrentUser] = React.useState<User | null>(null);
+  const [myGroup, setMyGroup] = React.useState<Group | null>(null);
+  const [error, setError] = React.useState<string | null>(null);
 
-  // Tìm thông tin nhóm của sinh viên dựa trên groupId
-  const myGroup = currentUser?.groupId
-    ? mockSummer2025Groups.find(group => group.groupId === currentUser.groupId)
-    : null;
-    
+  React.useEffect(() => {
+    const user = getCurrentUser();
+    setCurrentUser(user);
+
+    if (user?.groupId) {
+      const group = mockSummer2025Groups.find(g => g.groupId === user.groupId) || null;
+      setMyGroup(group);
+    }
+
+    setIsLoading(false);
+  }, []);
+
+  // === LOGIC MỚI CHO LUỒNG 2 ===
+  const handleJoinGroup = async (groupId: string) => {
+    if (!currentUser) return;
+
+    setIsJoining(true);
+    setError(null);
+
+    try {
+      // Gọi service (Bước 5, 6, 7, 8)
+      const { group: updatedGroup, user: updatedUser } = await GroupService.joinGroup(groupId, currentUser.userId);
+
+      // Cập nhật localStorage (Bước 9)
+      updateCurrentUser(updatedUser); 
+
+      // Cập nhật state để re-render giao diện
+      setCurrentUser(updatedUser);
+      setMyGroup(updatedGroup);
+
+      // Thông báo và chuyển hướng (Bước 10, 11) - (Alert đơn giản)
+      alert(`Tham gia nhóm "${updatedGroup.groupName}" thành công!`);
+
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || "Đã xảy ra lỗi.");
+    } finally {
+      setIsJoining(false);
+    }
+  };
+
+  const handleApplyToGroup = async (groupId: string) => {
+      // TODO: Xây dựng logic nộp đơn (Tương tự như handleJoinGroup)
+      alert(`Đã nộp đơn vào nhóm ${groupId}. Chức năng này sẽ được phát triển.`);
+  }
+
+  // --- GIAO DIỆN KHI ĐANG TẢI DỮ LIỆU ---
+  if (isLoading) {
+    return (
+      <DashboardLayout role="student">
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="w-8 h-8 animate-spin text-gray-500" />
+          <p className="ml-4 text-gray-600">Đang tải thông tin nhóm...</p>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   // --- GIAO DIỆN KHI SINH VIÊN CHƯA CÓ NHÓM ---
   if (!myGroup) {
-    // Lọc các nhóm có thể tham gia trong một khóa học cụ thể để demo
+    // Giả sử sinh viên đã chọn 1 khóa học.
+    // Trong luồng thực tế, ta sẽ lấy courseId từ URL
+    const demoCourseId = "SUM25-C01"; 
+    
     const availableGroups = mockSummer2025Groups.filter(
-      group => group.courseId === "SUM25-C01" && // Hardcode 1 khóa học để demo
+      group => group.courseId === demoCourseId && 
                group.status !== 'private' && 
                group.status !== 'finalize'
     );
@@ -36,7 +97,7 @@ export default function MyGroupPage() {
         <div className="space-y-6">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Tìm kiếm Nhóm</h1>
+              <h1 className="text-3xl font-bold text-gray-900">Tìm kiếm Nhóm (Khóa học {demoCourseId})</h1>
               <p className="text-gray-600 mt-1">
                 Bạn chưa tham gia nhóm nào. Hãy tìm một nhóm phù hợp hoặc tạo nhóm của riêng bạn.
               </p>
@@ -46,10 +107,23 @@ export default function MyGroupPage() {
               <Button><PlusCircle className="w-4 h-4 mr-2"/>Tạo nhóm mới</Button>
             </div>
           </div>
+          
+          {error && (
+            <div className="flex items-center gap-2 p-3 rounded-md bg-red-50 text-red-700">
+              <AlertCircle className="w-4 h-4" />
+              <p className="text-sm font-medium">{error}</p>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {availableGroups.map(group => (
-              <GroupCard key={group.groupId} group={group} />
+              <GroupCard 
+                key={group.groupId} 
+                group={group} 
+                onJoin={handleJoinGroup}
+                onApply={handleApplyToGroup}
+                isJoining={isJoining}
+              />
             ))}
           </div>
         </div>
