@@ -1,54 +1,53 @@
-// Authentication service - Replace mock data with actual API calls
-import type { User, LoginForm } from "@/lib/types"
+// lib/api/authService.ts
+// Authentication service - Replace mock data with actual API calls - Xử lý Login, Logout
+import type { User } from "@/lib/types";
+import { mockUsers } from "@/lib/mock-data/auth";
 
-// TODO: Replace with actual API endpoints
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'
+const API_BASE_URL = 'http://140.245.42.78:5050/api';
 
+// Giả sử backend có endpoint /api/Auth/login (cần xác nhận lại)
 export class AuthService {
-  // Login user
-  static async login(credentials: LoginForm): Promise<{ user: User; token: string }> {
-    // TODO: Replace with actual API call
-    // const response = await fetch(`${API_BASE_URL}/auth/login`, {
+  /**
+   * @description Đăng nhập người dùng
+   * @param username Tên đăng nhập
+   * @param password Mật khẩu
+   */
+  static async login(username: string, password: string): Promise<{ user: User; token: string }> {
+    console.log(`[AuthService.login] Called with:`, { username });
+    
+    // TƯƠNG LAI: Thay thế bằng lệnh gọi API thật
+    // const response = await fetch(`${API_BASE_URL}/Auth/login`, {
     //   method: 'POST',
     //   headers: { 'Content-Type': 'application/json' },
-    //   body: JSON.stringify(credentials)
-    // })
-    // return response.json()
-    
-    // Mock implementation for now
-    if (credentials.password === "password123") {
-      const mockUsers = await import("@/lib/mock-data/auth")
-      const user = mockUsers.mockUsers.find(u => u.username === credentials.username)
+    //   body: JSON.stringify({ username, password }),
+    // });
+    // if (!response.ok) throw new Error("Login failed");
+    // const data = await response.json(); // Giả sử trả về { user, token }
+    // localStorage.setItem('token', data.token);
+    // localStorage.setItem('currentUser', JSON.stringify(data.user));
+    // return data;
+
+    // HIỆN TẠI: Dùng mock-data
+    if (password === "password123") {
+      const user = mockUsers.find(u => u.username === username);
       if (user) {
-        return { user, token: "mock-jwt-token" }
+        const token = "mock-jwt-token-for-" + user.username;
+        localStorage.setItem('token', token);
+        localStorage.setItem('currentUser', JSON.stringify(user));
+        return Promise.resolve({ user, token });
       }
     }
-    throw new Error("Invalid credentials")
+    throw new Error("Invalid username or password");
   }
 
-  // Logout user
+  /**
+   * @description Đăng xuất người dùng
+   */
   static async logout(): Promise<void> {
-    // TODO: Replace with actual API call
-    // await fetch(`${API_BASE_URL}/auth/logout`, { method: 'POST' })
-  }
-
-  // Get current user
-  static async getCurrentUser(): Promise<User | null> {
-    // TODO: Replace with actual API call
-    // const token = localStorage.getItem('token')
-    // if (!token) return null
-    // const response = await fetch(`${API_BASE_URL}/auth/me`, {
-    //   headers: { Authorization: `Bearer ${token}` }
-    // })
-    // return response.json()
-    
-    // Mock implementation for now
-    return null
-  }
-
-  // Refresh token
-  static async refreshToken(): Promise<string> {
-    // TODO: Replace with actual API call
-    throw new Error("Not implemented")
+    console.log(`[AuthService.logout] Called`);
+    // TƯƠNG LAI: Có thể gọi API để vô hiệu hóa token
+    localStorage.removeItem('token');
+    localStorage.removeItem('currentUser');
+    return Promise.resolve();
   }
 }

@@ -2,12 +2,13 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { DashboardLayout } from "@/components/layouts/dashboard-layout"
-import { getCurrentUser } from "@/lib/utils/auth"
+import { DashboardLayout } from "@/components/layouts/dashboard-layout" // Đường dẫn đã được xác nhận
+import { getCurrentUser } from "@/lib/utils/auth" // Đường dẫn đã được xác nhận
+import type { User } from "@/lib/types"
 
 export default function StudentDashboard() {
   const router = useRouter()
-  const [user, setUser] = useState<any>(null)
+  const [user, setUser] = useState<User | null>(null)
 
   useEffect(() => {
     const currentUser = getCurrentUser()
@@ -18,7 +19,14 @@ export default function StudentDashboard() {
     setUser(currentUser)
   }, [router])
 
-  if (!user) return null
+  if (!user) {
+    // Hiển thị trạng thái chờ tải để tránh màn hình trắng
+    return (
+        <DashboardLayout role="student">
+            <div>Loading...</div>
+        </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout role="student">

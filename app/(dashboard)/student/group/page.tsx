@@ -6,25 +6,48 @@ import { useRouter } from "next/navigation"
 import { DashboardLayout } from "@/components/layouts/dashboard-layout"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Users, UserPlus, Settings, Filter, PlusCircle, LogOut } from "lucide-react"
+import { Users, UserPlus, Settings, Filter, PlusCircle, LogOut, Loader2 } from "lucide-react"
 import { mockSummer2025Groups } from "@/lib/mock-data/summer2025-data"
 import { getCurrentUser } from "@/lib/utils/auth"
 import { GroupCard } from "@/components/features/group/GroupCard"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import type { User, Group } from "@/lib/types"
 
 export default function MyGroupPage() {
   const router = useRouter();
-  // Lấy thông tin người dùng hiện tại từ localStorage
-  const currentUser = getCurrentUser();
+  
+  // Thêm state để quản lý trạng thái tải và dữ liệu
+  const [isLoading, setIsLoading] = React.useState(true);
+  const [currentUser, setCurrentUser] = React.useState<User | null>(null);
+  const [myGroup, setMyGroup] = React.useState<Group | null>(null);
 
-  // Tìm thông tin nhóm của sinh viên dựa trên groupId
-  const myGroup = currentUser?.groupId
-    ? mockSummer2025Groups.find(group => group.groupId === currentUser.groupId)
-    : null;
-    
+  React.useEffect(() => {
+    // Logic này chỉ chạy ở phía client sau khi component đã được render
+    const user = getCurrentUser();
+    setCurrentUser(user);
+
+    if (user?.groupId) {
+      const group = mockSummer2025Groups.find(g => g.groupId === user.groupId) || null;
+      setMyGroup(group);
+    }
+
+    setIsLoading(false); // Kết thúc trạng thái tải
+  }, []); // Mảng rỗng đảm bảo useEffect chỉ chạy một lần
+
+  // --- GIAO DIỆN KHI ĐANG TẢI DỮ LIỆU ---
+  if (isLoading) {
+    return (
+      <DashboardLayout role="student">
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="w-8 h-8 animate-spin text-gray-500" />
+          <p className="ml-4 text-gray-600">Đang tải thông tin nhóm...</p>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   // --- GIAO DIỆN KHI SINH VIÊN CHƯA CÓ NHÓM ---
   if (!myGroup) {
-    // Lọc các nhóm có thể tham gia trong một khóa học cụ thể để demo
     const availableGroups = mockSummer2025Groups.filter(
       group => group.courseId === "SUM25-C01" && // Hardcode 1 khóa học để demo
                group.status !== 'private' && 
@@ -103,7 +126,6 @@ export default function MyGroupPage() {
                     <p className="text-muted-foreground">Chức năng quản lý công việc sẽ được hiển thị ở đây.</p>
                 </div>
             </div>
-
           </CardContent>
         </Card>
       </div>
