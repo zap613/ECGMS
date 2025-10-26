@@ -1,11 +1,10 @@
 "use client"
 
 import type React from "react"
-
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { LayoutDashboard, BookOpen, Users, ClipboardList, Award, LogOut, Menu, X } from "lucide-react"
+import { LayoutDashboard, BookOpen, Users, ClipboardList, Award, LogOut, Menu, X, User as UserIcon } from "lucide-react"
 
 interface DashboardLayoutProps {
   children: React.ReactNode
@@ -18,6 +17,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
 
   const handleLogout = () => {
     localStorage.removeItem("currentUser")
+    localStorage.removeItem("token") // Đảm bảo xóa cả token
     router.push("/login")
   }
 
@@ -31,16 +31,17 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
 
   const studentNavItems = [
     { name: "Dashboard", href: "/student/dashboard", icon: LayoutDashboard },
-    { name: "My Courses", href: "/student/courses", icon: BookOpen },
-    { name: "My Group", href: "/student/group", icon: Users },
-    { name: "My Tasks", href: "/student/tasks", icon: ClipboardList },
-    { name: "My Grades", href: "/student/grades", icon: Award },
+    { name: "Khóa học", href: "/student/courses", icon: BookOpen },
+    { name: "Nhóm của tôi", href: "/student/group", icon: Users },
+    { name: "Công việc", href: "/student/tasks", icon: ClipboardList },
+    { name: "Điểm số", href: "/student/grades", icon: Award },
+    { name: "Hồ sơ", href: "/student/profile", icon: UserIcon }, // <-- THÊM DÒNG NÀY
   ]
 
   const adminNavItems = [
     { name: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
-    { name: "Data Management", href: "/admin/users", icon: Users }, 
-    { name: "Course Management", href: "/admin/courses", icon: BookOpen },
+    { name: "Quản lý Dữ liệu", href: "/admin/users", icon: Users }, 
+    { name: "Quản lý Khóa học", href: "/admin/courses", icon: BookOpen },
   ]
 
   const navItems = role === "lecturer" ? lecturerNavItems : role === "student" ? studentNavItems : adminNavItems

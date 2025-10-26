@@ -48,7 +48,9 @@ export interface Group {
 export interface GroupMember {
   userId: string;
   fullName: string;
-  avatarUrl?: string; // Thêm avatar để hiển thị
+  avatarUrl?: string;
+  role: "leader" | "member"; // <-- Đảm bảo có trường này
+  major: "SE" | "SS";      // <-- Đảm bảo có trường này
 }
 
 export interface GroupNeeds {

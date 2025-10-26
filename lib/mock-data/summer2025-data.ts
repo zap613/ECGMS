@@ -66,11 +66,15 @@ export const mockSummer2025Courses: Course[] = [
 
 // --- Dữ liệu thành viên mẫu để đưa vào các nhóm ---
 const sampleMembers: GroupMember[] = [
-    { userId: "S001", fullName: "Tran Thi Anh", avatarUrl: "/placeholder-user.jpg" },
-    { userId: "S002", fullName: "Le Van Bach", avatarUrl: "/placeholder-user.jpg" },
-    { userId: "S003", fullName: "Dang Ngoc Chau", avatarUrl: "/placeholder-user.jpg" },
-    { userId: "S004", fullName: "Bui Minh Duc", avatarUrl: "/placeholder-user.jpg" },
-    { userId: "S005", fullName: "Vuong Thanh I", avatarUrl: "/placeholder-user.jpg" },
+    { userId: "SE171532", fullName: "Hồ Nguyên Giáp", avatarUrl: "/placeholder-user.jpg", role: "member", major: "SE" }, // Thêm role, major
+    { userId: "S001", fullName: "Tran Thi Anh", avatarUrl: "/placeholder-user.jpg", role: "leader", major: "SE" },    // Thêm role, major
+    { userId: "S002", fullName: "Le Van Bach", avatarUrl: "/placeholder-user.jpg", role: "member", major: "SS" },    // Thêm role, major
+    { userId: "S003", fullName: "Dang Ngoc Chau", avatarUrl: "/placeholder-user.jpg", role: "member", major: "SE" }, // Thêm role, major
+    { userId: "S004", fullName: "Bui Minh Duc", avatarUrl: "/placeholder-user.jpg", role: "leader", major: "SS" },    // Thêm role, major
+    { userId: "S005", fullName: "Vuong Thanh I", avatarUrl: "/placeholder-user.jpg", role: "member", major: "SE" },    // Thêm role, major
+    { userId: "S006", fullName: "Nguyen Hoang K", avatarUrl: "/placeholder-user.jpg", role: "leader", major: "SE" }, // Leader nhóm finalize
+    { userId: "S007", fullName: "Le My L", avatarUrl: "/placeholder-user.jpg", role: "leader", major: "SE" },       // Leader nhóm private
+    { userId: "S008", fullName: "Phan Gia M", avatarUrl: "/placeholder-user.jpg", role: "member", major: "SE" },       // Thành viên nhóm private
 ];
 
 // --- Tạo các nhóm mẫu có sẵn thành viên để minh họa các trạng thái ---

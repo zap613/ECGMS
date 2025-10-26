@@ -7,17 +7,18 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button"
 import { Users, UserPlus, Settings, Filter, PlusCircle, LogOut, Loader2, AlertCircle } from "lucide-react"
 import { mockSummer2025Groups } from "@/lib/mock-data/summer2025-data"
-import { getCurrentUser, updateCurrentUser } from "@/lib/utils/auth" // Import thêm updateCurrentUser
+import { getCurrentUser, updateCurrentUser } from "@/lib/utils/auth"
 import { GroupCard } from "@/components/features/group/GroupCard"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import type { User, Group } from "@/lib/types"
-import { GroupService } from "@/lib/api/groupService" // Import service
+import { GroupService } from "@/lib/api/groupService"
+import { Badge } from "@/components/ui/badge" // Import Badge
 
 export default function MyGroupPage() {
   const router = useRouter();
   
   const [isLoading, setIsLoading] = React.useState(true);
-  const [isJoining, setIsJoining] = React.useState(false); // State cho hành động join
+  const [isJoining, setIsJoining] = React.useState(false);
   const [currentUser, setCurrentUser] = React.useState<User | null>(null);
   const [myGroup, setMyGroup] = React.useState<Group | null>(null);
   const [error, setError] = React.useState<string | null>(null);
@@ -27,6 +28,7 @@ export default function MyGroupPage() {
     setCurrentUser(user);
 
     if (user?.groupId) {
+      // Tìm nhóm từ mock data
       const group = mockSummer2025Groups.find(g => g.groupId === user.groupId) || null;
       setMyGroup(group);
     }
@@ -34,27 +36,16 @@ export default function MyGroupPage() {
     setIsLoading(false);
   }, []);
 
-  // === LOGIC MỚI CHO LUỒNG 2 ===
   const handleJoinGroup = async (groupId: string) => {
     if (!currentUser) return;
-
     setIsJoining(true);
     setError(null);
-
     try {
-      // Gọi service (Bước 5, 6, 7, 8)
       const { group: updatedGroup, user: updatedUser } = await GroupService.joinGroup(groupId, currentUser.userId);
-
-      // Cập nhật localStorage (Bước 9)
       updateCurrentUser(updatedUser); 
-
-      // Cập nhật state để re-render giao diện
       setCurrentUser(updatedUser);
       setMyGroup(updatedGroup);
-
-      // Thông báo và chuyển hướng (Bước 10, 11) - (Alert đơn giản)
       alert(`Tham gia nhóm "${updatedGroup.groupName}" thành công!`);
-
     } catch (err: any) {
       console.error(err);
       setError(err.message || "Đã xảy ra lỗi.");
@@ -64,8 +55,7 @@ export default function MyGroupPage() {
   };
 
   const handleApplyToGroup = async (groupId: string) => {
-      // TODO: Xây dựng logic nộp đơn (Tương tự như handleJoinGroup)
-      alert(`Đã nộp đơn vào nhóm ${groupId}. Chức năng này sẽ được phát triển.`);
+     alert(`Đã nộp đơn vào nhóm ${groupId}. Chức năng này sẽ được phát triển.`);
   }
 
   // --- GIAO DIỆN KHI ĐANG TẢI DỮ LIỆU ---
@@ -83,7 +73,6 @@ export default function MyGroupPage() {
   // --- GIAO DIỆN KHI SINH VIÊN CHƯA CÓ NHÓM ---
   if (!myGroup) {
     // Giả sử sinh viên đã chọn 1 khóa học.
-    // Trong luồng thực tế, ta sẽ lấy courseId từ URL
     const demoCourseId = "SUM25-C01"; 
     
     const availableGroups = mockSummer2025Groups.filter(
@@ -155,24 +144,30 @@ export default function MyGroupPage() {
             </div>
           </CardHeader>
           <CardContent>
-            <h3 className="font-semibold mb-4">Danh sách thành viên ({myGroup.memberCount}/{myGroup.maxMembers})</h3>
+            <h3 className="font-semibold mb-4 text-lg">Danh sách thành viên ({myGroup.memberCount}/{myGroup.maxMembers})</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {myGroup.members.map(member => (
-                <div key={member.userId} className="flex items-center gap-3 p-3 border rounded-lg bg-gray-50">
-                  <Avatar>
+                <div key={member.userId} className="flex items-center gap-3 p-3 border rounded-lg bg-gray-50 shadow-sm">
+                  <Avatar className="w-10 h-10">
                     <AvatarImage src={member.avatarUrl} />
                     <AvatarFallback>{member.fullName.charAt(0)}</AvatarFallback>
                   </Avatar>
-                  <div>
-                    <p className="font-medium">{member.fullName}</p>
+                  <div className="flex-1">
+                    <p className="font-medium text-sm">{member.fullName}</p>
                     <p className="text-xs text-muted-foreground">{member.userId}</p>
+                    {/* ===== CẬP NHẬT TẠI ĐÂY (Bước 4) ===== */}
+                    <div className="flex items-center gap-2 mt-1">
+                      <Badge variant="secondary" className="text-xs">{member.major}</Badge>
+                      {member.role === 'leader' && <Badge variant="default" className="text-xs">Trưởng nhóm</Badge>}
+                    </div>
+                    {/* ================================== */}
                   </div>
                 </div>
               ))}
             </div>
             
             <div className="mt-8 border-t pt-6">
-                <h3 className="font-semibold mb-4">Công việc của nhóm</h3>
+                <h3 className="font-semibold mb-4 text-lg">Công việc của nhóm</h3>
                 <div className="border rounded-lg p-8 text-center">
                     <p className="text-muted-foreground">Chức năng quản lý công việc sẽ được hiển thị ở đây.</p>
                 </div>
