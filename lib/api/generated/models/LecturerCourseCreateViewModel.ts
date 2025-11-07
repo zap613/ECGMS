@@ -2,7 +2,8 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-export type UpdateGroupMemberRoleViewModel = {
-    groupRoleName: string;
+export type LecturerCourseCreateViewModel = {
+    lecturerId: string;
+    courseId: string;
 };
 

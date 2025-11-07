@@ -19,13 +19,14 @@ export class TopicService {
         });
     }
     /**
-     * @param requestBody
      * @returns any Success
      * @throws ApiError
      */
-    public static postApiTopic(
+    public static postApiTopic({
+        requestBody,
+    }: {
         requestBody?: TopicCreateModel,
-    ): CancelablePromise<any> {
+    }): CancelablePromise<any> {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/api/Topic',
@@ -34,13 +35,14 @@ export class TopicService {
         });
     }
     /**
-     * @param id
      * @returns any Success
      * @throws ApiError
      */
-    public static getApiTopic1(
+    public static getApiTopic1({
+        id,
+    }: {
         id: string,
-    ): CancelablePromise<any> {
+    }): CancelablePromise<any> {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/api/Topic/{id}',
@@ -50,15 +52,16 @@ export class TopicService {
         });
     }
     /**
-     * @param id
-     * @param requestBody
      * @returns any Success
      * @throws ApiError
      */
-    public static putApiTopic(
+    public static putApiTopic({
+        id,
+        requestBody,
+    }: {
         id: string,
         requestBody?: TopicViewModel,
-    ): CancelablePromise<any> {
+    }): CancelablePromise<any> {
         return __request(OpenAPI, {
             method: 'PUT',
             url: '/api/Topic/{id}',
@@ -70,13 +73,14 @@ export class TopicService {
         });
     }
     /**
-     * @param id
      * @returns any Success
      * @throws ApiError
      */
-    public static deleteApiTopic(
+    public static deleteApiTopic({
+        id,
+    }: {
         id: string,
-    ): CancelablePromise<any> {
+    }): CancelablePromise<any> {
         return __request(OpenAPI, {
             method: 'DELETE',
             url: '/api/Topic/{id}',

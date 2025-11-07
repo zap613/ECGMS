@@ -9,21 +9,22 @@ import { OpenAPI } from '../core/OpenAPI';
 import { request as __request } from '../core/request';
 export class GroupMemberService {
     /**
-     * @param groupId
-     * @param userId
-     * @param keyword
-     * @param pageNumber
-     * @param pageSize
      * @returns GroupMemberViewModel Success
      * @throws ApiError
      */
-    public static getApiGroupMember(
+    public static getApiGroupMember({
+        groupId,
+        userId,
+        keyword,
+        pageNumber,
+        pageSize,
+    }: {
         groupId?: string,
         userId?: string,
         keyword?: string,
         pageNumber?: number,
         pageSize?: number,
-    ): CancelablePromise<Array<GroupMemberViewModel>> {
+    }): CancelablePromise<Array<GroupMemberViewModel>> {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/api/GroupMember',
@@ -37,13 +38,14 @@ export class GroupMemberService {
         });
     }
     /**
-     * @param requestBody
      * @returns GroupMemberViewModel Success
      * @throws ApiError
      */
-    public static postApiGroupMember(
+    public static postApiGroupMember({
+        requestBody,
+    }: {
         requestBody?: CreateGroupMemberViewModel,
-    ): CancelablePromise<GroupMemberViewModel> {
+    }): CancelablePromise<GroupMemberViewModel> {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/api/GroupMember',
@@ -52,13 +54,14 @@ export class GroupMemberService {
         });
     }
     /**
-     * @param id
      * @returns GroupMemberViewModel Success
      * @throws ApiError
      */
-    public static getApiGroupMember1(
+    public static getApiGroupMember1({
+        id,
+    }: {
         id: string,
-    ): CancelablePromise<GroupMemberViewModel> {
+    }): CancelablePromise<GroupMemberViewModel> {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/api/GroupMember/{id}',
@@ -68,13 +71,14 @@ export class GroupMemberService {
         });
     }
     /**
-     * @param id
      * @returns any Success
      * @throws ApiError
      */
-    public static deleteApiGroupMember(
+    public static deleteApiGroupMember({
+        id,
+    }: {
         id: string,
-    ): CancelablePromise<any> {
+    }): CancelablePromise<any> {
         return __request(OpenAPI, {
             method: 'DELETE',
             url: '/api/GroupMember/{id}',

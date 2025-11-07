@@ -2,49 +2,66 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-import type { User } from '../models/User';
+import type { LecturerCourseCreateViewModel } from '../models/LecturerCourseCreateViewModel';
 import type { CancelablePromise } from '../core/CancelablePromise';
 import { OpenAPI } from '../core/OpenAPI';
 import { request as __request } from '../core/request';
-export class UserService {
+export class LecturerCourseService {
     /**
-     * @returns User Success
+     * @returns any Success
      * @throws ApiError
      */
-    public static getApiUser(): CancelablePromise<Array<User>> {
+    public static getApiLecturerCourse(): CancelablePromise<any> {
         return __request(OpenAPI, {
             method: 'GET',
-            url: '/api/User',
+            url: '/api/LecturerCourse',
         });
     }
     /**
      * @returns any Success
      * @throws ApiError
      */
-    public static postApiUser({
+    public static postApiLecturerCourse({
         requestBody,
     }: {
-        requestBody?: User,
+        requestBody?: LecturerCourseCreateViewModel,
     }): CancelablePromise<any> {
         return __request(OpenAPI, {
             method: 'POST',
-            url: '/api/User',
+            url: '/api/LecturerCourse',
             body: requestBody,
             mediaType: 'application/json',
         });
     }
     /**
-     * @returns User Success
+     * @returns any Success
      * @throws ApiError
      */
-    public static getApiUser1({
+    public static getApiLecturerCourseByCourses({
+        coursesId,
+    }: {
+        coursesId: string,
+    }): CancelablePromise<any> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/LecturerCourse/by-courses/{coursesId}',
+            path: {
+                'coursesId': coursesId,
+            },
+        });
+    }
+    /**
+     * @returns any Success
+     * @throws ApiError
+     */
+    public static getApiLecturerCourse1({
         id,
     }: {
         id: string,
-    }): CancelablePromise<User> {
+    }): CancelablePromise<any> {
         return __request(OpenAPI, {
             method: 'GET',
-            url: '/api/User/{id}',
+            url: '/api/LecturerCourse/{id}',
             path: {
                 'id': id,
             },
@@ -54,16 +71,16 @@ export class UserService {
      * @returns any Success
      * @throws ApiError
      */
-    public static putApiUser({
+    public static putApiLecturerCourse({
         id,
         requestBody,
     }: {
         id: string,
-        requestBody?: User,
+        requestBody?: LecturerCourseCreateViewModel,
     }): CancelablePromise<any> {
         return __request(OpenAPI, {
             method: 'PUT',
-            url: '/api/User/{id}',
+            url: '/api/LecturerCourse/{id}',
             path: {
                 'id': id,
             },
@@ -75,33 +92,16 @@ export class UserService {
      * @returns any Success
      * @throws ApiError
      */
-    public static deleteApiUser({
+    public static deleteApiLecturerCourse({
         id,
     }: {
         id: string,
     }): CancelablePromise<any> {
         return __request(OpenAPI, {
             method: 'DELETE',
-            url: '/api/User/{id}',
+            url: '/api/LecturerCourse/{id}',
             path: {
                 'id': id,
-            },
-        });
-    }
-    /**
-     * @returns User Success
-     * @throws ApiError
-     */
-    public static getApiUserEmail({
-        email,
-    }: {
-        email: string,
-    }): CancelablePromise<User> {
-        return __request(OpenAPI, {
-            method: 'GET',
-            url: '/api/User/email/{email}',
-            path: {
-                'email': email,
             },
         });
     }

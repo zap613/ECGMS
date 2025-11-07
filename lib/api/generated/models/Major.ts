@@ -2,13 +2,14 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-export type RequestViewModel = {
+import type { UserProfile } from './UserProfile';
+export type Major = {
     id?: string;
-    userId?: string | null;
-    groupId?: string | null;
-    status?: string | null;
-    message?: string | null;
+    majorCode?: string | null;
+    majorName?: string | null;
+    description?: string | null;
     createdAt?: string | null;
     updatedAt?: string | null;
+    userProfiles?: Array<UserProfile> | null;
 };
 

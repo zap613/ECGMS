@@ -10,17 +10,18 @@ import { OpenAPI } from '../core/OpenAPI';
 import { request as __request } from '../core/request';
 export class RoleService {
     /**
-     * @param keyword
-     * @param pageNumber
-     * @param pageSize
      * @returns RoleViewModel Success
      * @throws ApiError
      */
-    public static getApiRole(
+    public static getApiRole({
+        keyword,
+        pageNumber,
+        pageSize,
+    }: {
         keyword?: string,
         pageNumber?: number,
         pageSize?: number,
-    ): CancelablePromise<Array<RoleViewModel>> {
+    }): CancelablePromise<Array<RoleViewModel>> {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/api/Role',
@@ -32,13 +33,14 @@ export class RoleService {
         });
     }
     /**
-     * @param requestBody
      * @returns RoleViewModel Success
      * @throws ApiError
      */
-    public static postApiRole(
+    public static postApiRole({
+        requestBody,
+    }: {
         requestBody?: CreateRoleViewModel,
-    ): CancelablePromise<RoleViewModel> {
+    }): CancelablePromise<RoleViewModel> {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/api/Role',
@@ -47,13 +49,14 @@ export class RoleService {
         });
     }
     /**
-     * @param id
      * @returns RoleViewModel Success
      * @throws ApiError
      */
-    public static getApiRole1(
+    public static getApiRole1({
+        id,
+    }: {
         id: string,
-    ): CancelablePromise<RoleViewModel> {
+    }): CancelablePromise<RoleViewModel> {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/api/Role/{id}',
@@ -63,15 +66,16 @@ export class RoleService {
         });
     }
     /**
-     * @param id
-     * @param requestBody
      * @returns RoleViewModel Success
      * @throws ApiError
      */
-    public static putApiRole(
+    public static putApiRole({
+        id,
+        requestBody,
+    }: {
         id: string,
         requestBody?: UpdateRoleViewModel,
-    ): CancelablePromise<RoleViewModel> {
+    }): CancelablePromise<RoleViewModel> {
         return __request(OpenAPI, {
             method: 'PUT',
             url: '/api/Role/{id}',
@@ -83,13 +87,14 @@ export class RoleService {
         });
     }
     /**
-     * @param id
      * @returns any Success
      * @throws ApiError
      */
-    public static deleteApiRole(
+    public static deleteApiRole({
+        id,
+    }: {
         id: string,
-    ): CancelablePromise<any> {
+    }): CancelablePromise<any> {
         return __request(OpenAPI, {
             method: 'DELETE',
             url: '/api/Role/{id}',

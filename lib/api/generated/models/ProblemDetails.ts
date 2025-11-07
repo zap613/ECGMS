@@ -2,9 +2,4 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-export type UpdateRequestViewModel = {
-    id: string;
-    status?: string | null;
-    message?: string | null;
-};
-
+export type ProblemDetails = Record<string, any>;

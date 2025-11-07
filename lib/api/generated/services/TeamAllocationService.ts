@@ -7,13 +7,14 @@ import { OpenAPI } from '../core/OpenAPI';
 import { request as __request } from '../core/request';
 export class TeamAllocationService {
     /**
-     * @param courseName
      * @returns any Success
      * @throws ApiError
      */
-    public static postApiTeamAllocationAllocateTeams(
+    public static postApiTeamAllocationAllocateTeams({
+        courseName,
+    }: {
         courseName?: string,
-    ): CancelablePromise<any> {
+    }): CancelablePromise<any> {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/api/TeamAllocation/allocate-teams',
@@ -33,15 +34,16 @@ export class TeamAllocationService {
         });
     }
     /**
-     * @param formData
      * @returns any Success
      * @throws ApiError
      */
-    public static postApiTeamAllocationImportExcel(
+    public static postApiTeamAllocationImportExcel({
+        formData,
+    }: {
         formData?: {
             file?: Blob;
         },
-    ): CancelablePromise<any> {
+    }): CancelablePromise<any> {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/api/TeamAllocation/import-excel',

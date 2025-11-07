@@ -9,17 +9,18 @@ import { OpenAPI } from '../core/OpenAPI';
 import { request as __request } from '../core/request';
 export class GroupService {
     /**
-     * @param courseName
-     * @param formData
      * @returns any Success
      * @throws ApiError
      */
-    public static postApiGroupImportGroups(
+    public static postApiGroupImportGroups({
+        courseName,
+        formData,
+    }: {
         courseName?: string,
         formData?: {
             file?: Blob;
         },
-    ): CancelablePromise<any> {
+    }): CancelablePromise<any> {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/api/Group/import-groups',
@@ -41,13 +42,14 @@ export class GroupService {
         });
     }
     /**
-     * @param requestBody
      * @returns any Success
      * @throws ApiError
      */
-    public static postApiGroup(
+    public static postApiGroup({
+        requestBody,
+    }: {
         requestBody?: GroupCreateModel,
-    ): CancelablePromise<any> {
+    }): CancelablePromise<any> {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/api/Group',
@@ -56,13 +58,14 @@ export class GroupService {
         });
     }
     /**
-     * @param id
      * @returns any Success
      * @throws ApiError
      */
-    public static getApiGroup1(
+    public static getApiGroup1({
+        id,
+    }: {
         id: string,
-    ): CancelablePromise<any> {
+    }): CancelablePromise<any> {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/api/Group/{id}',
@@ -72,15 +75,16 @@ export class GroupService {
         });
     }
     /**
-     * @param id
-     * @param requestBody
      * @returns any Success
      * @throws ApiError
      */
-    public static putApiGroup(
+    public static putApiGroup({
+        id,
+        requestBody,
+    }: {
         id: string,
         requestBody?: UpdateGroupViewModel,
-    ): CancelablePromise<any> {
+    }): CancelablePromise<any> {
         return __request(OpenAPI, {
             method: 'PUT',
             url: '/api/Group/{id}',
@@ -92,18 +96,56 @@ export class GroupService {
         });
     }
     /**
-     * @param id
      * @returns any Success
      * @throws ApiError
      */
-    public static deleteApiGroup(
+    public static deleteApiGroup({
+        id,
+    }: {
         id: string,
-    ): CancelablePromise<any> {
+    }): CancelablePromise<any> {
         return __request(OpenAPI, {
             method: 'DELETE',
             url: '/api/Group/{id}',
             path: {
                 'id': id,
+            },
+        });
+    }
+    /**
+     * @returns any Success
+     * @throws ApiError
+     */
+    public static getApiGroupByLecturer({
+        lecturerId,
+    }: {
+        lecturerId: string,
+    }): CancelablePromise<any> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/Group/by-lecturer/{lecturerId}',
+            path: {
+                'lecturerId': lecturerId,
+            },
+            errors: {
+                404: `Not Found`,
+            },
+        });
+    }
+    /**
+     * @returns any Success
+     * @throws ApiError
+     */
+    public static getApiGroupSearch({
+        name,
+    }: {
+        name?: string,
+    }): CancelablePromise<any> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/Group/search',
+            query: {
+                'name': name,
             },
         });
     }

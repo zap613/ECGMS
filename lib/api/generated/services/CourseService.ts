@@ -11,17 +11,18 @@ import { OpenAPI } from '../core/OpenAPI';
 import { request as __request } from '../core/request';
 export class CourseService {
     /**
-     * @param keyword
-     * @param pageNumber
-     * @param pageSize
      * @returns CourseViewModelPaginatedResultViewModel Success
      * @throws ApiError
      */
-    public static getApiCourse(
+    public static getApiCourse({
+        keyword,
+        pageNumber,
+        pageSize,
+    }: {
         keyword?: string,
         pageNumber?: number,
         pageSize?: number,
-    ): CancelablePromise<CourseViewModelPaginatedResultViewModel> {
+    }): CancelablePromise<CourseViewModelPaginatedResultViewModel> {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/api/Course',
@@ -33,13 +34,14 @@ export class CourseService {
         });
     }
     /**
-     * @param requestBody
      * @returns CourseViewModel Success
      * @throws ApiError
      */
-    public static postApiCourse(
+    public static postApiCourse({
+        requestBody,
+    }: {
         requestBody?: CreateCourseViewModel,
-    ): CancelablePromise<CourseViewModel> {
+    }): CancelablePromise<CourseViewModel> {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/api/Course',
@@ -48,13 +50,14 @@ export class CourseService {
         });
     }
     /**
-     * @param id
      * @returns CourseViewModel Success
      * @throws ApiError
      */
-    public static getApiCourse1(
+    public static getApiCourse1({
+        id,
+    }: {
         id: string,
-    ): CancelablePromise<CourseViewModel> {
+    }): CancelablePromise<CourseViewModel> {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/api/Course/{id}',
@@ -64,15 +67,16 @@ export class CourseService {
         });
     }
     /**
-     * @param id
-     * @param requestBody
      * @returns any Success
      * @throws ApiError
      */
-    public static putApiCourse(
+    public static putApiCourse({
+        id,
+        requestBody,
+    }: {
         id: string,
         requestBody?: UpdateCourseViewModel,
-    ): CancelablePromise<any> {
+    }): CancelablePromise<any> {
         return __request(OpenAPI, {
             method: 'PUT',
             url: '/api/Course/{id}',
@@ -84,18 +88,58 @@ export class CourseService {
         });
     }
     /**
-     * @param id
      * @returns any Success
      * @throws ApiError
      */
-    public static deleteApiCourse(
+    public static deleteApiCourse({
+        id,
+    }: {
         id: string,
-    ): CancelablePromise<any> {
+    }): CancelablePromise<any> {
         return __request(OpenAPI, {
             method: 'DELETE',
             url: '/api/Course/{id}',
             path: {
                 'id': id,
+            },
+        });
+    }
+    /**
+     * @returns CourseViewModel Success
+     * @throws ApiError
+     */
+    public static getApiCourseByLecturer({
+        lecturerId,
+        id,
+    }: {
+        lecturerId: string,
+        id?: string,
+    }): CancelablePromise<CourseViewModel> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/Course/by-lecturer/{lecturerId}',
+            path: {
+                'lecturerId': lecturerId,
+            },
+            query: {
+                'id': id,
+            },
+        });
+    }
+    /**
+     * @returns any Success
+     * @throws ApiError
+     */
+    public static getApiCourseSearch({
+        name,
+    }: {
+        name?: string,
+    }): CancelablePromise<any> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/Course/search',
+            query: {
+                'name': name,
             },
         });
     }

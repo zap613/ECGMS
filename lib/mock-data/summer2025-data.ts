@@ -1,79 +1,47 @@
-// mock-data/summer2025-data.ts
-// Dữ liệu giả lập cho kịch bản kỳ học Summer 2025
-// Sử dụng để kiểm thử tính năng khởi tạo khóa học và nhóm trống
+// lib/mock-data/summer2025-data.ts (NỘI DUNG THAY THẾ HOÀN TOÀN)
 
-import type { Course, Group, GroupMember, GroupNeeds } from "@/lib/types";
+import type { Course, Group, GroupMember } from "@/lib/types";
 
-// =================================================================
-// KỊCH BẢN: KỲ HỌC SUMMER 2025
-// - Tổng số sinh viên: 500
-// - Số lớp (courses): 5
-// - Sinh viên mỗi lớp: 100
-// - Số nhóm trống cần tạo mỗi lớp: 35 (100 / 4 * 1.4)
-// =================================================================
-
-// ===== DANH SÁCH 5 LỚP HỌC (COURSES) CỦA KỲ SUMMER 2025 =====
+// --- Dữ liệu các khóa học trong kỳ ---
 export const mockSummer2025Courses: Course[] = [
   {
     courseId: "SUM25-C01",
     courseCode: "EXE101-C1",
-    courseName: "EXE101 - Lớp 1",
-    semester: "Summer",
-    year: 2025,
-    lecturerId: "L001", // Gán cho Dr. Nguyen Van An
-    description: "Lớp học EXE101 cho kỳ Summer 2025, nhóm 1.",
+    courseName: "Dự án Trải nghiệm (EXE)",
+    semester: "Summer 2025",
+    status: "open",
+    createdDate: "2025-10-10",
+    groupCount: 6,
+    studentCount: 30, // Giả sử
+    lecturerCount: 5,  // Giả sử
   },
   {
     courseId: "SUM25-C02",
-    courseCode: "EXE101-C2",
-    courseName: "EXE101 - Lớp 2",
-    semester: "Summer",
-    year: 2025,
-    lecturerId: "L002", // Gán cho M.S. Hoang Thi Binh
-    description: "Lớp học EXE101 cho kỳ Summer 2025, nhóm 2.",
-  },
-  {
-    courseId: "SUM25-C03",
-    courseCode: "EXE101-C3",
-    courseName: "EXE101 - Lớp 3",
-    semester: "Summer",
-    year: 2025,
-    lecturerId: "L003", // Gán cho Dr. Phan Van Cuong
-    description: "Lớp học EXE101 cho kỳ Summer 2025, nhóm 3.",
-  },
-  {
-    courseId: "SUM25-C04",
-    courseCode: "EXE101-C4",
-    courseName: "EXE101 - Lớp 4",
-    semester: "Summer",
-    year: 2025,
-    lecturerId: "L004", // Gán cho Th.S Le Thi Dung
-    description: "Lớp học EXE101 cho kỳ Summer 2025, nhóm 4.",
-  },
-  {
-    courseId: "SUM25-C05",
-    courseCode: "EXE101-C5",
-    courseName: "EXE101 - Lớp 5",
-    semester: "Summer",
-    year: 2025,
-    lecturerId: "L005", // Gán cho Dr. Tran Minh Giang
-    description: "Lớp học EXE101 cho kỳ Summer 2025, nhóm 5.",
+    courseCode: "EXE102-C2",
+    courseName: "Dự án Trải nghiệm (EXE) - Khóa 2",
+    semester: "Summer 2025",
+    status: "pending",
+    createdDate: "2025-10-11",
+    groupCount: 0,
+    studentCount: 0,
+    lecturerCount: 0,
   },
 ];
 
-
-// ===== DỮ LIỆU NHÓM CHO KỲ HỌC SUMMER 2025 =====
-
-// --- Dữ liệu thành viên mẫu để đưa vào các nhóm ---
+// --- Dữ liệu thành viên mẫu (Đã sửa) ---
 const sampleMembers: GroupMember[] = [
-    { userId: "S001", fullName: "Tran Thi Anh", avatarUrl: "/placeholder-user.jpg" },
-    { userId: "S002", fullName: "Le Van Bach", avatarUrl: "/placeholder-user.jpg" },
-    { userId: "S003", fullName: "Dang Ngoc Chau", avatarUrl: "/placeholder-user.jpg" },
-    { userId: "S004", fullName: "Bui Minh Duc", avatarUrl: "/placeholder-user.jpg" },
-    { userId: "S005", fullName: "Vuong Thanh I", avatarUrl: "/placeholder-user.jpg" },
+  { userId: "S001", fullName: "Tran Thi Anh", avatarUrl: "/placeholder-user.jpg", role: "leader", major: "SE" },
+  { userId: "S002", fullName: "Le Van Binh", avatarUrl: "/placeholder-user.jpg", role: "member", major: "SS" },
+  { userId: "S003", fullName: "Pham Gia Cat", avatarUrl: "/placeholder-user.jpg", role: "member", major: "SE" },
+  { userId: "S004", fullName: "Bui Minh Duc", avatarUrl: "/placeholder-user.jpg", role: "leader", major: "SS" },
+  { userId: "S005", fullName: "Do Thi Em", avatarUrl: "/placeholder-user.jpg", role: "member", major: "SS" },
+  { userId: "S006", fullName: "Nguyen Hoang K", avatarUrl: "/placeholder-user.jpg", role: "leader", major: "SE" },
+  { userId: "S007", fullName: "Le My L", avatarUrl: "/placeholder-user.jpg", role: "leader", major: "SE" },
+  { userId: "S008", fullName: "Phan Gia M", avatarUrl: "/placeholder-user.jpg", role: "member", major: "SE" },
 ];
 
-// --- Tạo các nhóm mẫu có sẵn thành viên để minh họa các trạng thái ---
+
+// --- Dữ liệu các nhóm trong khóa học C01 ---
 const sampleGroupsWithMembers: Group[] = [
   // Nhóm 1: Trạng thái "lock", đủ 3 thành viên, có thể khóa nhóm
   {
@@ -88,7 +56,7 @@ const sampleGroupsWithMembers: Group[] = [
     status: "lock",
     majors: ["SE", "SS"],
     createdDate: "2025-10-15",
-    members: sampleMembers.slice(0, 3),
+    members: sampleMembers.slice(0, 3), // Dùng 3 thành viên đầu
     needs: [ { major: "SE", count: 1 }, { major: "SS", count: 2 } ],
     isLockedByRule: true,
   },
@@ -105,7 +73,7 @@ const sampleGroupsWithMembers: Group[] = [
     status: "open",
     majors: ["SS"],
     createdDate: "2025-10-16",
-    members: sampleMembers.slice(3, 5),
+    members: sampleMembers.slice(3, 5), // Dùng 2 thành viên tiếp theo
     needs: [ { major: "SE", count: 3 }, { major: "SS", count: 1 }],
     isLockedByRule: false,
   },
@@ -122,7 +90,9 @@ const sampleGroupsWithMembers: Group[] = [
     status: "finalize",
     majors: ["SE", "SS"],
     createdDate: "2025-10-14",
-    members: [ ...sampleMembers, { userId: "S006", fullName: "Nguyen Hoang K" }],
+    members: [ // Lấy 6 thành viên
+        ...sampleMembers.slice(0, 6)
+    ],
     needs: [],
   },
   // Nhóm 4: Trạng thái "private", chỉ có thể vào bằng lời mời
@@ -138,48 +108,58 @@ const sampleGroupsWithMembers: Group[] = [
     status: "private",
     majors: ["SE"],
     createdDate: "2025-10-17",
-    members: [{ userId: "S007", fullName: "Le My L" }, { userId: "S008", fullName: "Phan Gia M" }],
+    members: [ // Lấy 2 thành viên cuối
+        ...sampleMembers.slice(6, 8)
+    ],
     needs: [],
   },
 ];
 
-// --- Hàm tạo 35 nhóm trống cho một khóa học ---
-const createEmptyGroupsForCourse = (course: Course): Group[] => {
-  return Array.from({ length: 35 }, (_, i) => {
-    // Bỏ qua các ID đã được sử dụng bởi các nhóm mẫu ở trên để tránh trùng lặp
-    if (course.courseId === "SUM25-C01" && i < sampleGroupsWithMembers.length) {
-        return null;
-    }
 
-    return {
-        groupId: `${course.courseId}-G${(i + 1).toString().padStart(2, '0')}`,
-        groupName: `Nhóm ${i + 1}`,
-        courseId: course.courseId,
-        courseCode: course.courseCode,
-        memberCount: 0,
-        maxMembers: 6,
-        leaderName: "Chưa có",
-        leaderId: "",
-        status: "open",
-        majors: [],
-        createdDate: "2025-10-15",
-        members: [],
-        needs: [ { major: "SE", count: 3 }, { major: "SS", count: 3 } ],
-    }
-  }).filter(g => g !== null) as Group[];
-}
+// --- Dữ liệu các nhóm đang tìm thành viên (cho sinh viên chưa có nhóm) ---
+const sampleOpenGroups: Group[] = [
+  {
+    groupId: "SUM25-C01-G05",
+    groupName: "Frontend Legends",
+    courseId: "SUM25-C01",
+    courseCode: "EXE101-C1",
+    memberCount: 4,
+    maxMembers: 6,
+    leaderId: "S010",
+    leaderName: "Nguyen Van P",
+    status: "open",
+    majors: ["SE"],
+    createdDate: "2025-10-18",
+    members: [
+      { userId: "S010", fullName: "Nguyen Van P", avatarUrl: "/placeholder-user.jpg", role: "leader", major: "SE" },
+      { userId: "S011", fullName: "Tran Thi Q", avatarUrl: "/placeholder-user.jpg", role: "member", major: "SE" },
+      { userId: "S012", fullName: "Le Van R", avatarUrl: "/placeholder-user.jpg", role: "member", major: "SE" },
+      { userId: "S013", fullName: "Pham Thi S", avatarUrl: "/placeholder-user.jpg", role: "member", major: "SE" },
+    ],
+    needs: [ { major: "SS", count: 2 } ],
+  },
+  {
+    groupId: "SUM25-C01-G06",
+    groupName: "Business Analysts United",
+    courseId: "SUM25-C01",
+    courseCode: "EXE101-C1",
+    memberCount: 3,
+    maxMembers: 6,
+    leaderId: "S020",
+    leaderName: "Hoang Thi T",
+    status: "open",
+    majors: ["SS"],
+    createdDate: "2025-10-19",
+    members: [
+      { userId: "S020", fullName: "Hoang Thi T", avatarUrl: "/placeholder-user.jpg", role: "leader", major: "SS" },
+      { userId: "S021", fullName: "Vu Van U", avatarUrl: "/placeholder-user.jpg", role: "member", major: "SS" },
+      { userId: "S022", fullName: "Dang Thi V", avatarUrl: "/placeholder-user.jpg", role: "member", major: "SS" },
+    ],
+    needs: [ { major: "SE", count: 3 } ],
+  },
+];
 
-// --- Tạo và kết hợp tất cả dữ liệu nhóm ---
-let allGroups: Group[] = [];
-mockSummer2025Courses.forEach(course => {
-    if (course.courseId === "SUM25-C01") {
-        // Lớp đầu tiên sẽ có các nhóm mẫu + các nhóm trống còn lại
-        const emptyGroups = createEmptyGroupsForCourse(course);
-        allGroups = [...allGroups, ...sampleGroupsWithMembers, ...emptyGroups];
-    } else {
-        // Các lớp khác chỉ có nhóm trống
-        allGroups = [...allGroups, ...createEmptyGroupsForCourse(course)];
-    }
-});
-
-export const mockSummer2025Groups: Group[] = allGroups;
+export const mockSummer2025Groups: Group[] = [
+  ...sampleGroupsWithMembers,
+  ...sampleOpenGroups,
+];

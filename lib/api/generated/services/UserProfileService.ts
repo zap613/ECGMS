@@ -19,13 +19,14 @@ export class UserProfileService {
         });
     }
     /**
-     * @param id
      * @returns any Success
      * @throws ApiError
      */
-    public static getApiUserProfile1(
+    public static getApiUserProfile1({
+        id,
+    }: {
         id: string,
-    ): CancelablePromise<any> {
+    }): CancelablePromise<any> {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/api/UserProfile/{id}',
@@ -35,15 +36,16 @@ export class UserProfileService {
         });
     }
     /**
-     * @param id
-     * @param requestBody
      * @returns any Success
      * @throws ApiError
      */
-    public static putApiUserProfile(
+    public static putApiUserProfile({
+        id,
+        requestBody,
+    }: {
         id: string,
         requestBody?: UserProfileUpdateModel,
-    ): CancelablePromise<any> {
+    }): CancelablePromise<any> {
         return __request(OpenAPI, {
             method: 'PUT',
             url: '/api/UserProfile/{id}',
@@ -55,13 +57,14 @@ export class UserProfileService {
         });
     }
     /**
-     * @param id
      * @returns any Success
      * @throws ApiError
      */
-    public static deleteApiUserProfile(
+    public static deleteApiUserProfile({
+        id,
+    }: {
         id: string,
-    ): CancelablePromise<any> {
+    }): CancelablePromise<any> {
         return __request(OpenAPI, {
             method: 'DELETE',
             url: '/api/UserProfile/{id}',
@@ -71,15 +74,16 @@ export class UserProfileService {
         });
     }
     /**
-     * @param userId
-     * @param requestBody
      * @returns any Success
      * @throws ApiError
      */
-    public static patchApiUserProfileMajor(
+    public static patchApiUserProfileMajor({
+        userId,
+        requestBody,
+    }: {
         userId: string,
         requestBody?: MajorCodeUpdateModel,
-    ): CancelablePromise<any> {
+    }): CancelablePromise<any> {
         return __request(OpenAPI, {
             method: 'PATCH',
             url: '/api/UserProfile/{userId}/major',
