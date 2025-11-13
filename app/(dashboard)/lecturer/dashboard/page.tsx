@@ -340,7 +340,7 @@ export default function LecturerDashboard() {
         </Card>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Card>
+          {/* <Card>
             <CardHeader>
               <CardTitle>Khóa học gần đây</CardTitle>
               <CardDescription>
@@ -379,7 +379,7 @@ export default function LecturerDashboard() {
                 ))}
               </div>
             </CardContent>
-          </Card>
+          </Card> */}
 
           <Card>
             <CardHeader>

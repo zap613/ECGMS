@@ -46,7 +46,7 @@ export default function CoursesPage() {
               Quản lý các khóa học bạn phụ trách
             </p>
           </div>
-          <Button
+          {/* <Button
             className="bg-orange-500 hover:bg-orange-600"
             onClick={() =>
               toast({
@@ -57,7 +57,7 @@ export default function CoursesPage() {
           >
             <Plus className="w-4 h-4 mr-2" />
             Tạo khóa học
-          </Button>
+          </Button> */}
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
