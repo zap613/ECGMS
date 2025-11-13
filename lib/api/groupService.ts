@@ -194,4 +194,30 @@ export class GroupService {
     // TODO: Replace with actual API call
     throw new Error("Not implemented");
   }
+
+  // Export lecturer report
+  static async exportLecturerReport(
+    lecturerId: string,
+    format: "xlsx" | "csv"
+  ): Promise<Blob> {
+    // TODO: Replace with actual API call
+    // const response = await fetch(`${API_BASE_URL}/lecturers/${lecturerId}/reports?format=${format}`, {
+    //   method: 'GET',
+    // })
+    // return response.blob()
+
+    // Mock implementation for now
+    console.log(
+      `Mock: Exporting lecturer report for ${lecturerId} in ${format} format`
+    );
+
+    // Return mock file content
+    const content = `Report for lecturer ${lecturerId}\nGenerated at ${new Date().toISOString()}`;
+    return new Blob([content], {
+      type:
+        format === "csv"
+          ? "text/csv"
+          : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+  }
 }

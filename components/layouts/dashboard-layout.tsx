@@ -1,33 +1,42 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { LayoutDashboard, BookOpen, Users, ClipboardList, Award, LogOut, Menu, X } from "lucide-react"
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import {
+  LayoutDashboard,
+  BookOpen,
+  Users,
+  ClipboardList,
+  Award,
+  LogOut,
+  Menu,
+  X,
+} from "lucide-react";
 
 interface DashboardLayoutProps {
-  children: React.ReactNode
-  role: "lecturer" | "student" | "admin"
+  children: React.ReactNode;
+  role: "lecturer" | "student" | "admin";
 }
 
 export function DashboardLayout({ children, role }: DashboardLayoutProps) {
-  const router = useRouter()
-  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const router = useRouter();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const handleLogout = () => {
-    localStorage.removeItem("currentUser")
-    router.push("/login")
-  }
+    localStorage.removeItem("currentUser");
+    router.push("/login");
+  };
 
   const lecturerNavItems = [
     { name: "Dashboard", href: "/lecturer/dashboard", icon: LayoutDashboard },
-    { name: "Courses", href: "/lecturer/courses", icon: BookOpen },
+    // { name: "Courses", href: "/lecturer/courses", icon: BookOpen },
     { name: "Groups", href: "/lecturer/groups", icon: Users },
     { name: "Tasks", href: "/lecturer/tasks", icon: ClipboardList },
     { name: "Grades", href: "/lecturer/grades", icon: Award },
-  ]
+  ];
 
   const studentNavItems = [
     { name: "Dashboard", href: "/student/dashboard", icon: LayoutDashboard },
@@ -35,21 +44,29 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
     { name: "My Group", href: "/student/group", icon: Users },
     { name: "My Tasks", href: "/student/tasks", icon: ClipboardList },
     { name: "My Grades", href: "/student/grades", icon: Award },
-  ]
+  ];
 
   const adminNavItems = [
     { name: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
     { name: "Users", href: "/admin/users", icon: Users },
     { name: "Courses", href: "/admin/courses", icon: BookOpen },
-  ]
+  ];
 
-  const navItems = role === "lecturer" ? lecturerNavItems : role === "student" ? studentNavItems : adminNavItems
+  const navItems =
+    role === "lecturer"
+      ? lecturerNavItems
+      : role === "student"
+      ? studentNavItems
+      : adminNavItems;
 
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Mobile sidebar backdrop */}
       {sidebarOpen && (
-        <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={() => setSidebarOpen(false)} />
+        <div
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
       )}
 
       {/* Sidebar */}
@@ -83,8 +100,8 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
               <button
                 key={item.name}
                 onClick={() => {
-                  router.push(item.href)
-                  setSidebarOpen(false)
+                  router.push(item.href);
+                  setSidebarOpen(false);
                 }}
                 className="w-full flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-orange-50 hover:text-orange-600 rounded-lg transition-colors"
               >
@@ -124,5 +141,5 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
         <main className="p-6">{children}</main>
       </div>
     </div>
-  )
+  );
 }
