@@ -36,16 +36,29 @@ import { useToast } from "@/lib/hooks/use-toast";
 import { LecturerService } from "@/lib/api/lecturerService";
 import type { StudentWithoutGroup } from "@/lib/types";
 import * as XLSX from "xlsx";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 
 export default function StudentsWithoutGroupPage() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
   const [students, setStudents] = useState<StudentWithoutGroup[]>([]);
-  const [filteredStudents, setFilteredStudents] = useState<StudentWithoutGroup[]>([]);
+  const [filteredStudents, setFilteredStudents] = useState<
+    StudentWithoutGroup[]
+  >([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterMajor, setFilterMajor] = useState<string>("all");
   const [filterSkill, setFilterSkill] = useState<string>("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -110,7 +123,22 @@ export default function StudentsWithoutGroupPage() {
     }
 
     setFilteredStudents(filtered);
+    // Reset to first page when filters change
+    setCurrentPage(1);
   }, [searchTerm, filterMajor, filterSkill, students]);
+
+  // Calculate pagination
+  const totalPages = Math.ceil(filteredStudents.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedStudents = filteredStudents.slice(startIndex, endIndex);
+
+  // Handle page change
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    // Scroll to top of table
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   const exportToExcel = () => {
     try {
@@ -119,18 +147,22 @@ export default function StudentsWithoutGroupPage() {
         "Mã sinh viên": student.studentId,
         "Tên đăng nhập": student.user.username,
         "Họ và tên": student.userProfileViewModel.fullName,
-        "Email": student.user.email,
-        "Ngành": student.majorCode,
+        Email: student.user.email,
+        Ngành: student.majorCode,
         "Tên ngành": student.userProfileViewModel.major.name,
         "Kỹ năng chính": student.coreSkill,
         "Skill Set": student.user.skillSet,
-        "Bio": student.userProfileViewModel.bio,
+        Bio: student.userProfileViewModel.bio,
       }));
 
       // Create workbook and worksheet
       const worksheet = XLSX.utils.json_to_sheet(excelData);
       const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, "Sinh viên chưa có nhóm");
+      XLSX.utils.book_append_sheet(
+        workbook,
+        worksheet,
+        "Sinh viên chưa có nhóm"
+      );
 
       // Set column widths
       const columnWidths = [
@@ -340,10 +372,32 @@ export default function StudentsWithoutGroupPage() {
         {/* Students Table */}
         <Card>
           <CardHeader>
-            <CardTitle>Danh sách sinh viên</CardTitle>
-            <CardDescription>
-              {filteredStudents.length} sinh viên chưa có nhóm
-            </CardDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Danh sách sinh viên</CardTitle>
+                <CardDescription>
+                  Hiển thị {startIndex + 1}-
+                  {Math.min(endIndex, filteredStudents.length)} trong tổng số{" "}
+                  {filteredStudents.length} sinh viên
+                </CardDescription>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-600">Số dòng/trang:</span>
+                <select
+                  value={itemsPerPage}
+                  onChange={(e) => {
+                    setItemsPerPage(Number(e.target.value));
+                    setCurrentPage(1);
+                  }}
+                  className="px-3 py-1.5 border border-gray-300 rounded-md text-sm"
+                >
+                  <option value={5}>5</option>
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
+                  <option value={50}>50</option>
+                </select>
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
             {loading ? (
@@ -374,10 +428,10 @@ export default function StudentsWithoutGroupPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredStudents.map((student, index) => (
+                    {paginatedStudents.map((student, index) => (
                       <TableRow key={student.studentId}>
                         <TableCell className="font-medium">
-                          {index + 1}
+                          {startIndex + index + 1}
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
@@ -432,10 +486,144 @@ export default function StudentsWithoutGroupPage() {
                 </Table>
               </div>
             )}
+
+            {/* Pagination */}
+            {!loading && filteredStudents.length > 0 && totalPages > 1 && (
+              <div className="mt-6 flex items-center justify-between">
+                <div className="text-sm text-gray-600">
+                  Trang {currentPage} / {totalPages}
+                </div>
+                <Pagination>
+                  <PaginationContent>
+                    <PaginationItem>
+                      <PaginationPrevious
+                        href="#"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          if (currentPage > 1) {
+                            handlePageChange(currentPage - 1);
+                          }
+                        }}
+                        className={
+                          currentPage === 1
+                            ? "pointer-events-none opacity-50"
+                            : "cursor-pointer"
+                        }
+                      />
+                    </PaginationItem>
+
+                    {/* First page */}
+                    {currentPage > 2 && (
+                      <>
+                        <PaginationItem>
+                          <PaginationLink
+                            href="#"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              handlePageChange(1);
+                            }}
+                            className="cursor-pointer"
+                          >
+                            1
+                          </PaginationLink>
+                        </PaginationItem>
+                        {currentPage > 3 && (
+                          <PaginationItem>
+                            <PaginationEllipsis />
+                          </PaginationItem>
+                        )}
+                      </>
+                    )}
+
+                    {/* Previous page */}
+                    {currentPage > 1 && (
+                      <PaginationItem>
+                        <PaginationLink
+                          href="#"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            handlePageChange(currentPage - 1);
+                          }}
+                          className="cursor-pointer"
+                        >
+                          {currentPage - 1}
+                        </PaginationLink>
+                      </PaginationItem>
+                    )}
+
+                    {/* Current page */}
+                    <PaginationItem>
+                      <PaginationLink
+                        href="#"
+                        isActive
+                        className="cursor-pointer"
+                      >
+                        {currentPage}
+                      </PaginationLink>
+                    </PaginationItem>
+
+                    {/* Next page */}
+                    {currentPage < totalPages && (
+                      <PaginationItem>
+                        <PaginationLink
+                          href="#"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            handlePageChange(currentPage + 1);
+                          }}
+                          className="cursor-pointer"
+                        >
+                          {currentPage + 1}
+                        </PaginationLink>
+                      </PaginationItem>
+                    )}
+
+                    {/* Last page */}
+                    {currentPage < totalPages - 1 && (
+                      <>
+                        {currentPage < totalPages - 2 && (
+                          <PaginationItem>
+                            <PaginationEllipsis />
+                          </PaginationItem>
+                        )}
+                        <PaginationItem>
+                          <PaginationLink
+                            href="#"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              handlePageChange(totalPages);
+                            }}
+                            className="cursor-pointer"
+                          >
+                            {totalPages}
+                          </PaginationLink>
+                        </PaginationItem>
+                      </>
+                    )}
+
+                    <PaginationItem>
+                      <PaginationNext
+                        href="#"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          if (currentPage < totalPages) {
+                            handlePageChange(currentPage + 1);
+                          }
+                        }}
+                        className={
+                          currentPage === totalPages
+                            ? "pointer-events-none opacity-50"
+                            : "cursor-pointer"
+                        }
+                      />
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
     </DashboardLayout>
   );
 }
-
