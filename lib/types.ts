@@ -16,6 +16,36 @@ export interface User {
   groupId?: string | null; // <-- THÊM DÒNG NÀY: null hoặc undefined nghĩa là chưa có nhóm
 }
 
+// ===== STUDENT WITHOUT GROUP TYPES =====
+export interface MajorInfo {
+  majorId: string;
+  majorCode: string;
+  name: string;
+  description: string;
+}
+
+export interface UserProfileViewModel {
+  userId: string;
+  fullName: string;
+  bio: string;
+  avatarUrl: string;
+  major: MajorInfo;
+  status: string | null;
+}
+
+export interface StudentWithoutGroup {
+  studentId: string;
+  user: {
+    id: string;
+    username: string;
+    email: string;
+    skillSet: string;
+  };
+  userProfileViewModel: UserProfileViewModel;
+  majorCode: string;
+  coreSkill: string;
+}
+
 // ===== COURSE TYPES =====
 export interface Course {
   courseId: string;
@@ -154,7 +184,7 @@ export interface Task {
 export type UserRole = "lecturer" | "student" | "admin";
 export type Major = "SS" | "SE";
 export type GroupStatus = "active" | "inactive";
-export type GroupRole = "leader" | "member" | "secretary";
+export type GroupRoleName = "leader" | "member" | "secretary";
 export type TaskStatus = "pending" | "in-progress" | "completed";
 export type TaskPriority = "low" | "medium" | "high";
 export type GradeType = "group" | "individual";

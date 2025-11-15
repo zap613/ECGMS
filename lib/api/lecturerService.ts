@@ -1,8 +1,8 @@
 // Lecturer service - Replace mock implementations with real API calls later
-import type { Group } from "@/lib/types";
+import type { Group, StudentWithoutGroup } from "@/lib/types";
 
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+  process.env.NEXT_PUBLIC_API_URL || "http://140.245.42.78:5050/api";
 
 const MAX_GROUPS_PER_LECTURER = 10;
 
@@ -86,5 +86,41 @@ export class LecturerService {
         reason ? `. Reason: ${reason}` : ""
       }`
     );
+  }
+
+  /**
+   * Get all students without groups.
+   * Uses Next.js API route as proxy to avoid CORS issues.
+   */
+  static async getStudentsWithoutGroup(): Promise<StudentWithoutGroup[]> {
+    try {
+      // Use Next.js API route as proxy to avoid CORS issues
+      const response = await fetch("/api/students-without-group", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        cache: "no-store",
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.message || `HTTP error! status: ${response.status}`
+        );
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error("Error fetching students without group:", error);
+      // Provide more helpful error message
+      if (error instanceof TypeError && error.message === "Failed to fetch") {
+        throw new Error(
+          "Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng hoặc liên hệ quản trị viên."
+        );
+      }
+      throw error;
+    }
   }
 }
