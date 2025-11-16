@@ -278,9 +278,7 @@ export default function GroupsPage() {
                                 variant="outline"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  router.push(
-                                    `/lecturer/groups/${group.id}`
-                                  );
+                                  router.push(`/lecturer/groups/${group.id}`);
                                 }}
                               >
                                 Xem chi tiết
@@ -356,9 +354,7 @@ export default function GroupsPage() {
                         {filteredGroups.length} nhóm
                       </span>
                       <div className="flex items-center gap-2">
-                        <span className="text-sm text-gray-600">
-                          Số card/trang:
-                        </span>
+                        <span className="text-sm text-gray-600">Hiển thị:</span>
                         <select
                           value={itemsPerPage}
                           onChange={(e) => {
@@ -417,7 +413,9 @@ export default function GroupsPage() {
                             <div className="flex items-center justify-between text-sm text-gray-600">
                               <span>
                                 Thành viên: {group.members.length}
-                                {group.maxMembers ? ` / ${group.maxMembers}` : ""}
+                                {group.maxMembers
+                                  ? ` / ${group.maxMembers}`
+                                  : ""}
                               </span>
                               <Button
                                 size="sm"
