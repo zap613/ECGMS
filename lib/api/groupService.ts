@@ -9,30 +9,76 @@ import type {
   ContributionScoreInput,
 } from "@/lib/types";
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+// Types that match the real Group API
+export interface ApiGroupMember {
+  userId: string;
+  roleInGroup: string;
+  username: string;
+  email: string;
+  joinedAt: string;
+  skillSet: string;
+}
+
+export interface ApiGroup {
+  id: string;
+  name: string;
+  courseId: string;
+  courseName: string;
+  topicId: string | null;
+  topicName: string | null;
+  maxMembers: number | null;
+  members: ApiGroupMember[];
+  status: string | null;
+}
 
 export class GroupService {
   // Get all groups
-  static async getGroups(): Promise<Group[]> {
-    // TODO: Replace with actual API call
-    // const response = await fetch(`${API_BASE_URL}/groups`)
-    // return response.json()
+  static async getGroups(): Promise<ApiGroup[]> {
+    // Use Next.js API route as proxy to avoid CORS issues
+    const response = await fetch("/api/groups", {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      cache: "no-store",
+    });
 
-    // Mock implementation for now
-    const mockGroups = await import("@/lib/mock-data/groups");
-    return mockGroups.mockGroups;
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => "");
+      throw new Error(
+        errorText || `Failed to load groups. Status: ${response.status}`
+      );
+    }
+
+    const data = (await response.json()) as ApiGroup[];
+    return data;
   }
 
   // Get group by ID
-  static async getGroupById(groupId: string): Promise<Group | null> {
-    // TODO: Replace with actual API call
-    // const response = await fetch(`${API_BASE_URL}/groups/${groupId}`)
-    // return response.json()
+  static async getGroupById(groupId: string): Promise<ApiGroup | null> {
+    // Use Next.js API route as proxy to avoid CORS issues
+    const response = await fetch(`/api/groups/${groupId}`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      cache: "no-store",
+    });
 
-    // Mock implementation for now
-    const mockGroups = await import("@/lib/mock-data/groups");
-    return mockGroups.mockGroups.find((g) => g.groupId === groupId) || null;
+    if (response.status === 404) {
+      return null;
+    }
+
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => "");
+      throw new Error(
+        errorText ||
+          `Failed to load group detail. Status: ${response.status}`
+      );
+    }
+
+    const data = (await response.json()) as ApiGroup;
+    return data;
   }
 
   // Get group members
