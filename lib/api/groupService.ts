@@ -36,6 +36,10 @@ export interface AddGroupMemberPayload {
   groupId: string;
 }
 
+export interface RemoveGroupMemberPayload {
+  memberId: string;
+}
+
 export class GroupService {
   // Get all groups
   static async getGroups(): Promise<ApiGroup[]> {
@@ -77,8 +81,7 @@ export class GroupService {
     if (!response.ok) {
       const errorText = await response.text().catch(() => "");
       throw new Error(
-        errorText ||
-          `Failed to load group detail. Status: ${response.status}`
+        errorText || `Failed to load group detail. Status: ${response.status}`
       );
     }
 
@@ -99,10 +102,39 @@ export class GroupService {
     });
 
     if (!response.ok) {
+      // Cố gắng parse JSON để lấy message thân thiện từ API route
+      try {
+        const errorJson = await response.json();
+        if (errorJson && typeof errorJson.message === "string") {
+          throw new Error(errorJson.message);
+        }
+      } catch {
+        // Fallback sang text/raw message
+        const errorText = await response.text().catch(() => "");
+        throw new Error(
+          errorText ||
+            `Failed to add member to group. Status: ${response.status}`
+        );
+      }
+    }
+  }
+
+  // Remove member from group via API (by memberId / userId from backend)
+  static async removeMemberFromGroupViaApi(
+    payload: RemoveGroupMemberPayload
+  ): Promise<void> {
+    const response = await fetch(`/api/group-member/${payload.memberId}`, {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
       const errorText = await response.text().catch(() => "");
       throw new Error(
         errorText ||
-          `Failed to add member to group. Status: ${response.status}`
+          `Failed to remove member from group. Status: ${response.status}`
       );
     }
   }
@@ -115,7 +147,9 @@ export class GroupService {
 
     // Mock implementation for now
     const mockGroups = await import("@/lib/mock-data/groups");
-    return mockGroups.mockGroupMembers.filter((m) => m.groupId === groupId);
+    return mockGroups.mockGroupMembers.filter(
+      (m: GroupMember & { groupId?: string }) => m.groupId === groupId
+    );
   }
 
   // Get groups by course ID

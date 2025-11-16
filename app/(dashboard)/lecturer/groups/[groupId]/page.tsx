@@ -148,9 +148,13 @@ export default function GroupDetailPage() {
       setOpenAddDialog(false);
     } catch (error) {
       console.error("Error adding member to group:", error);
+      const description =
+        error instanceof Error && error.message
+          ? error.message
+          : "Không thể thêm sinh viên vào nhóm";
       toast({
         title: "Lỗi",
-        description: "Không thể thêm sinh viên vào nhóm",
+        description,
         variant: "destructive",
       });
     } finally {
@@ -275,18 +279,67 @@ export default function GroupDetailPage() {
                           <User className="w-6 h-6 text-gray-600" />
                         </div>
                         <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <h3 className="font-semibold text-lg">
-                              {member.username}
-                            </h3>
-                            {member.roleInGroup && (
-                              <Badge
-                                variant="outline"
-                                className="text-xs capitalize"
-                              >
-                                {member.roleInGroup}
-                              </Badge>
-                            )}
+                          <div className="flex items-center justify-between gap-2 mb-1">
+                            <div className="flex items-center gap-2">
+                              <h3 className="font-semibold text-lg">
+                                {member.username}
+                              </h3>
+                              {member.roleInGroup && (
+                                <Badge
+                                  variant="outline"
+                                  className="text-xs capitalize"
+                                >
+                                  {member.roleInGroup}
+                                </Badge>
+                              )}
+                            </div>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={async () => {
+                                if (
+                                  !window.confirm(
+                                    `Bạn có chắc muốn xóa ${member.username} khỏi nhóm?`
+                                  )
+                                ) {
+                                  return;
+                                }
+
+                                try {
+                                  await GroupService.removeMemberFromGroupViaApi(
+                                    { memberId: member.userId }
+                                  );
+
+                                  setGroup({
+                                    ...group,
+                                    members: group.members.filter(
+                                      (m) => m.userId !== member.userId
+                                    ),
+                                  });
+
+                                  toast({
+                                    title: "Đã xóa thành viên khỏi nhóm",
+                                    description: `${member.username} đã được xóa khỏi nhóm thành công`,
+                                  });
+                                } catch (error) {
+                                  console.error(
+                                    "Error removing member from group:",
+                                    error
+                                  );
+                                  const description =
+                                    error instanceof Error && error.message
+                                      ? error.message
+                                      : "Không thể xóa sinh viên khỏi nhóm";
+                                  toast({
+                                    title: "Lỗi",
+                                    description,
+                                    variant: "destructive",
+                                  });
+                                }
+                              }}
+                            >
+                              Xóa khỏi nhóm
+                            </Button>
                           </div>
                           <p className="text-sm text-gray-600 mb-2 flex items-center gap-2">
                             <Mail className="w-4 h-4 text-gray-400" />
