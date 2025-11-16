@@ -31,6 +31,11 @@ export interface ApiGroup {
   status: string | null;
 }
 
+export interface AddGroupMemberPayload {
+  userId: string;
+  groupId: string;
+}
+
 export class GroupService {
   // Get all groups
   static async getGroups(): Promise<ApiGroup[]> {
@@ -79,6 +84,27 @@ export class GroupService {
 
     const data = (await response.json()) as ApiGroup;
     return data;
+  }
+
+  // Add member from "students without group" list
+  static async addMemberToGroupViaApi(
+    payload: AddGroupMemberPayload
+  ): Promise<void> {
+    const response = await fetch("/api/group-member", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => "");
+      throw new Error(
+        errorText ||
+          `Failed to add member to group. Status: ${response.status}`
+      );
+    }
   }
 
   // Get group members

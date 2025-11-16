@@ -12,10 +12,29 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Users, User, Mail, Code2, BookOpen } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import {
+  ArrowLeft,
+  Users,
+  User,
+  Mail,
+  Code2,
+  BookOpen,
+  UserPlus,
+  Search,
+} from "lucide-react";
 import { getCurrentUser } from "@/lib/utils/auth";
 import { useToast } from "@/lib/hooks/use-toast";
 import { GroupService, type ApiGroup } from "@/lib/api/groupService";
+import type { StudentWithoutGroup } from "@/lib/types";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 export default function GroupDetailPage() {
   const router = useRouter();
@@ -23,6 +42,13 @@ export default function GroupDetailPage() {
   const [user, setUser] = useState<any>(null);
   const [group, setGroup] = useState<ApiGroup | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
+  const [addingMember, setAddingMember] = useState<boolean>(false);
+  const [studentsWithoutGroup, setStudentsWithoutGroup] = useState<
+    StudentWithoutGroup[]
+  >([]);
+  const [studentSearch, setStudentSearch] = useState<string>("");
+  const [selectedStudentId, setSelectedStudentId] = useState<string>("");
+  const [openAddDialog, setOpenAddDialog] = useState<boolean>(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -54,8 +80,83 @@ export default function GroupDetailPage() {
       }
     };
 
+    const loadStudentsWithoutGroup = async () => {
+      try {
+        const response = await fetch("/api/students-without-group", {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          cache: "no-store",
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP status ${response.status}`);
+        }
+
+        const data = (await response.json()) as StudentWithoutGroup[];
+        setStudentsWithoutGroup(data);
+      } catch (error) {
+        console.error("Error loading students without group:", error);
+      }
+    };
+
     loadGroup();
+    loadStudentsWithoutGroup();
   }, [router, params.groupId, toast]);
+
+  const handleOpenAddDialog = () => {
+    setSelectedStudentId("");
+    setStudentSearch("");
+    setOpenAddDialog(true);
+  };
+
+  const handleAddMember = async () => {
+    if (!group) return;
+    if (!selectedStudentId) {
+      toast({
+        title: "Lỗi",
+        description: "Vui lòng chọn một sinh viên cần thêm",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setAddingMember(true);
+      await GroupService.addMemberToGroupViaApi({
+        userId: selectedStudentId,
+        groupId: group.id,
+      });
+
+      toast({
+        title: "Thêm thành viên thành công",
+        description: "Sinh viên đã được thêm vào nhóm",
+      });
+
+      // Refresh group detail to see new member list
+      const updated = await GroupService.getGroupById(group.id);
+      if (updated) {
+        setGroup(updated);
+      }
+
+      // Remove this student from local "without group" list
+      setStudentsWithoutGroup((prev) =>
+        prev.filter((s) => s.studentId !== selectedStudentId)
+      );
+
+      setOpenAddDialog(false);
+    } catch (error) {
+      console.error("Error adding member to group:", error);
+      toast({
+        title: "Lỗi",
+        description: "Không thể thêm sinh viên vào nhóm",
+        variant: "destructive",
+      });
+    } finally {
+      setAddingMember(false);
+    }
+  };
 
   if (!user) return null;
   if (loading || !group) {
@@ -70,6 +171,16 @@ export default function GroupDetailPage() {
     group.status === "active"
       ? "bg-green-100 text-green-700"
       : "bg-gray-100 text-gray-700";
+
+  const filteredStudentsForSelect = studentsWithoutGroup.filter((s) => {
+    if (!studentSearch) return true;
+    const term = studentSearch.toLowerCase();
+    return (
+      s.userProfileViewModel.fullName.toLowerCase().includes(term) ||
+      s.user.email.toLowerCase().includes(term) ||
+      s.user.username.toLowerCase().includes(term)
+    );
+  });
 
   return (
     <DashboardLayout role="lecturer">
@@ -139,6 +250,16 @@ export default function GroupDetailPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
+            <div className="mb-4 flex justify-end">
+              <Button
+                size="sm"
+                className="bg-green-600 hover:bg-green-700"
+                onClick={handleOpenAddDialog}
+              >
+                <UserPlus className="w-4 h-4 mr-2" />
+                Thêm sinh viên chưa có nhóm
+              </Button>
+            </div>
             {group.members.length === 0 ? (
               <p className="text-gray-600">Nhóm hiện chưa có thành viên nào.</p>
             ) : (
@@ -186,6 +307,70 @@ export default function GroupDetailPage() {
             )}
           </CardContent>
         </Card>
+
+        <Dialog open={openAddDialog} onOpenChange={setOpenAddDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Thêm sinh viên chưa có nhóm</DialogTitle>
+              <DialogDescription>
+                Chọn một sinh viên từ danh sách sinh viên chưa có nhóm để thêm
+                vào nhóm hiện tại.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-2">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">
+                  Tìm kiếm sinh viên
+                </label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <Input
+                    placeholder="Nhập tên, email hoặc username..."
+                    value={studentSearch}
+                    onChange={(e) => setStudentSearch(e.target.value)}
+                    className="pl-9"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">
+                  Chọn sinh viên
+                </label>
+                <select
+                  value={selectedStudentId}
+                  onChange={(e) => setSelectedStudentId(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                >
+                  <option value="">-- Chọn sinh viên --</option>
+                  {filteredStudentsForSelect.map((s) => (
+                    <option key={s.studentId} value={s.studentId}>
+                      {s.userProfileViewModel.fullName} - {s.user.email} -{" "}
+                      {s.user.username}
+                    </option>
+                  ))}
+                </select>
+                {filteredStudentsForSelect.length === 0 && (
+                  <p className="text-xs text-gray-500">
+                    Không còn sinh viên nào chưa có nhóm hoặc không khớp từ
+                    khóa.
+                  </p>
+                )}
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setOpenAddDialog(false)}
+                disabled={addingMember}
+              >
+                Hủy
+              </Button>
+              <Button onClick={handleAddMember} disabled={addingMember}>
+                {addingMember ? "Đang thêm..." : "Thêm vào nhóm"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );
