@@ -299,82 +299,267 @@ export default function GroupsPage() {
           <TabsContent value="all-groups">
             <Card>
               <CardHeader>
-                <CardTitle>Tất cả nhóm</CardTitle>
-                <CardDescription>
-                  Danh sách toàn bộ nhóm trong các môn học
-                </CardDescription>
+                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                  <div>
+                    <CardTitle>Tất cả nhóm</CardTitle>
+                    <CardDescription>
+                      Danh sách toàn bộ nhóm trong các môn học
+                    </CardDescription>
+                  </div>
+                  <div className="flex flex-col md:flex-row gap-3 md:items-center">
+                    <div className="relative w-full md:w-64">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                      <Input
+                        placeholder="Tìm theo tên nhóm, chủ đề, môn học..."
+                        value={searchTerm}
+                        onChange={(e) => {
+                          setSearchTerm(e.target.value);
+                          setCurrentPage(1);
+                        }}
+                        className="pl-9"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-gray-600">Trạng thái:</span>
+                      <select
+                        value={statusFilter}
+                        onChange={(e) => {
+                          setStatusFilter(e.target.value);
+                          setCurrentPage(1);
+                        }}
+                        className="px-3 py-2 border border-gray-300 rounded-md text-sm"
+                      >
+                        <option value="all">Tất cả</option>
+                        <option value="active">Active</option>
+                        <option value="inactive">Không active</option>
+                        <option value="no-status">Chưa có trạng thái</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
               </CardHeader>
               <CardContent>
                 {loading ? (
                   <div className="p-6 text-center text-gray-600">
                     Đang tải danh sách nhóm...
                   </div>
-                ) : groups.length === 0 ? (
+                ) : filteredGroups.length === 0 ? (
                   <div className="p-6 text-center text-gray-600">
-                    Không có nhóm nào.
+                    Không có nhóm nào phù hợp với bộ lọc.
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {groups.map((group) => (
-                      <Card
-                        key={group.id}
-                        className="hover:shadow-md transition-shadow cursor-pointer"
-                        onClick={() =>
-                          router.push(`/lecturer/groups/${group.id}`)
-                        }
-                      >
-                        <CardHeader>
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="bg-orange-100 p-2 rounded-lg">
-                              <Users className="w-5 h-5 text-orange-600" />
-                            </div>
-                            <div className="flex flex-col items-end gap-1">
-                              <Badge
-                                variant="outline"
-                                className="text-xs line-clamp-1 max-w-[140px]"
-                              >
-                                {group.courseName}
-                              </Badge>
-                              {group.status && (
+                  <>
+                    <div className="flex items-center justify-between mb-4 text-sm text-gray-600 flex-wrap gap-2">
+                      <span>
+                        Hiển thị {startIndex + 1}-
+                        {Math.min(endIndex, filteredGroups.length)} trong tổng{" "}
+                        {filteredGroups.length} nhóm
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-gray-600">
+                          Số card/trang:
+                        </span>
+                        <select
+                          value={itemsPerPage}
+                          onChange={(e) => {
+                            setItemsPerPage(Number(e.target.value));
+                            setCurrentPage(1);
+                          }}
+                          className="px-3 py-1.5 border border-gray-300 rounded-md text-sm"
+                        >
+                          <option value={6}>6</option>
+                          <option value={9}>9</option>
+                          <option value={12}>12</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {paginatedGroups.map((group) => (
+                        <Card
+                          key={group.id}
+                          className="hover:shadow-md transition-shadow cursor-pointer"
+                          onClick={() =>
+                            router.push(`/lecturer/groups/${group.id}`)
+                          }
+                        >
+                          <CardHeader>
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="bg-orange-100 p-2 rounded-lg">
+                                <Users className="w-5 h-5 text-orange-600" />
+                              </div>
+                              <div className="flex flex-col items-end gap-1">
                                 <Badge
                                   variant="outline"
-                                  className="text-xs capitalize"
+                                  className="text-xs line-clamp-1 max-w-[140px]"
                                 >
-                                  {group.status}
+                                  {group.courseName}
                                 </Badge>
-                              )}
+                                {group.status && (
+                                  <Badge
+                                    variant="outline"
+                                    className="text-xs capitalize"
+                                  >
+                                    {group.status}
+                                  </Badge>
+                                )}
+                              </div>
                             </div>
-                          </div>
-                          <CardTitle className="mt-2 text-base line-clamp-1">
-                            {group.name}
-                          </CardTitle>
-                          {group.topicName && (
-                            <CardDescription className="line-clamp-1">
-                              Chủ đề: {group.topicName}
-                            </CardDescription>
-                          )}
-                        </CardHeader>
-                        <CardContent>
-                          <div className="flex items-center justify-between text-sm text-gray-600">
-                            <span>
-                              Thành viên: {group.members.length}
-                              {group.maxMembers ? ` / ${group.maxMembers}` : ""}
-                            </span>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                router.push(`/lecturer/groups/${group.id}`);
-                              }}
-                            >
-                              Xem chi tiết
-                            </Button>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
+                            <CardTitle className="mt-2 text-base line-clamp-1">
+                              {group.name}
+                            </CardTitle>
+                            {group.topicName && (
+                              <CardDescription className="line-clamp-1">
+                                Chủ đề: {group.topicName}
+                              </CardDescription>
+                            )}
+                          </CardHeader>
+                          <CardContent>
+                            <div className="flex items-center justify-between text-sm text-gray-600">
+                              <span>
+                                Thành viên: {group.members.length}
+                                {group.maxMembers ? ` / ${group.maxMembers}` : ""}
+                              </span>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  router.push(`/lecturer/groups/${group.id}`);
+                                }}
+                              >
+                                Xem chi tiết
+                              </Button>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+
+                    {totalPages > 1 && (
+                      <div className="mt-6 flex items-center justify-between">
+                        <div className="text-sm text-gray-600">
+                          Trang {safeCurrentPage} / {totalPages}
+                        </div>
+                        <Pagination>
+                          <PaginationContent>
+                            <PaginationItem>
+                              <PaginationPrevious
+                                href="#"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  if (safeCurrentPage > 1) {
+                                    setCurrentPage(safeCurrentPage - 1);
+                                  }
+                                }}
+                                className={
+                                  safeCurrentPage === 1
+                                    ? "pointer-events-none opacity-50"
+                                    : "cursor-pointer"
+                                }
+                              />
+                            </PaginationItem>
+
+                            {safeCurrentPage > 2 && (
+                              <>
+                                <PaginationItem>
+                                  <PaginationLink
+                                    href="#"
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      setCurrentPage(1);
+                                    }}
+                                    className="cursor-pointer"
+                                  >
+                                    1
+                                  </PaginationLink>
+                                </PaginationItem>
+                                {safeCurrentPage > 3 && (
+                                  <PaginationItem>
+                                    <PaginationEllipsis />
+                                  </PaginationItem>
+                                )}
+                              </>
+                            )}
+
+                            {safeCurrentPage > 1 && (
+                              <PaginationItem>
+                                <PaginationLink
+                                  href="#"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    setCurrentPage(safeCurrentPage - 1);
+                                  }}
+                                  className="cursor-pointer"
+                                >
+                                  {safeCurrentPage - 1}
+                                </PaginationLink>
+                              </PaginationItem>
+                            )}
+
+                            <PaginationItem>
+                              <PaginationLink href="#" isActive>
+                                {safeCurrentPage}
+                              </PaginationLink>
+                            </PaginationItem>
+
+                            {safeCurrentPage < totalPages && (
+                              <PaginationItem>
+                                <PaginationLink
+                                  href="#"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    setCurrentPage(safeCurrentPage + 1);
+                                  }}
+                                  className="cursor-pointer"
+                                >
+                                  {safeCurrentPage + 1}
+                                </PaginationLink>
+                              </PaginationItem>
+                            )}
+
+                            {safeCurrentPage < totalPages - 1 && (
+                              <>
+                                {safeCurrentPage < totalPages - 2 && (
+                                  <PaginationItem>
+                                    <PaginationEllipsis />
+                                  </PaginationItem>
+                                )}
+                                <PaginationItem>
+                                  <PaginationLink
+                                    href="#"
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      setCurrentPage(totalPages);
+                                    }}
+                                    className="cursor-pointer"
+                                  >
+                                    {totalPages}
+                                  </PaginationLink>
+                                </PaginationItem>
+                              </>
+                            )}
+
+                            <PaginationItem>
+                              <PaginationNext
+                                href="#"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  if (safeCurrentPage < totalPages) {
+                                    setCurrentPage(safeCurrentPage + 1);
+                                  }
+                                }}
+                                className={
+                                  safeCurrentPage === totalPages
+                                    ? "pointer-events-none opacity-50"
+                                    : "cursor-pointer"
+                                }
+                              />
+                            </PaginationItem>
+                          </PaginationContent>
+                        </Pagination>
+                      </div>
+                    )}
+                  </>
                 )}
               </CardContent>
             </Card>
