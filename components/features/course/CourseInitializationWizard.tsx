@@ -2,7 +2,7 @@
 "use client"
 
 import * as React from "react"
-import { ArrowRight, CheckCircle } from "lucide-react"
+import { ArrowRight, CheckCircle, Loader2 } from "lucide-react" // Thêm icon Loader2
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -15,7 +15,6 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { mockUsers } from "@/lib/mock-data/auth"
 import type { Course } from "@/lib/types"
 
 interface WizardProps {
@@ -33,19 +32,38 @@ export function CourseInitializationWizard({ isOpen, onClose, onComplete }: Wiza
   const [totalStudents, setTotalStudents] = React.useState<number | ''>('');
   const [classCount, setClassCount] = React.useState<number | ''>(1);
   const [courses, setCourses] = React.useState<Partial<Course & { lecturerId: string }>[]>([]);
+  
+  // State quản lý dữ liệu thực và trạng thái loading
+  const [lecturers, setLecturers] = React.useState<any[]>([]);
+  const [isLoading, setIsLoading] = React.useState(false);
 
-  const lecturers = mockUsers.filter(u => u.role === 'lecturer');
-
+  // Fetch danh sách giảng viên từ API BFF khi mở Dialog
   React.useEffect(() => {
+    const fetchLecturers = async () => {
+      try {
+        const response = await fetch('/api/users/lecturers');
+        if (response.ok) {
+          const data = await response.json();
+          setLecturers(data);
+        } else {
+          console.error("Không thể tải danh sách giảng viên");
+        }
+      } catch (error) {
+        console.error("Lỗi kết nối:", error);
+      }
+    };
+
     if (isOpen) {
       setStep(1);
       setSemesterName('');
       setTotalStudents('');
       setClassCount(1);
       setCourses([]);
+      fetchLecturers();
     }
   }, [isOpen]);
 
+  // Tự động tính toán danh sách lớp dựa trên số lượng
   React.useEffect(() => {
     const numClasses = Number(classCount);
     const numTotalStudents = Number(totalStudents);
@@ -75,7 +93,7 @@ export function CourseInitializationWizard({ isOpen, onClose, onComplete }: Wiza
     setStep(2);
   };
 
-  const handleFinalize = () => {
+  const handleFinalize = async () => {
     const numClassCount = Number(classCount);
     const numTotalStudents = Number(totalStudents);
 
@@ -86,6 +104,9 @@ export function CourseInitializationWizard({ isOpen, onClose, onComplete }: Wiza
       return;
     }
 
+    setIsLoading(true);
+
+    // Logic tính toán phân bổ nhóm
     const studentsPerClass = Math.floor(numTotalStudents / numClassCount);
     const maxTeams = Math.floor(studentsPerClass / MIN_GROUP_SIZE);
     const emptyGroupsToCreate = Math.ceil(maxTeams * (1 + SAFETY_FACTOR));
@@ -96,25 +117,37 @@ export function CourseInitializationWizard({ isOpen, onClose, onComplete }: Wiza
       emptyGroupsToCreate: emptyGroupsToCreate
     }));
 
-    console.log("FINALIZING DATA TO SEND TO API:", {
-      semesterName,
-      totalStudents,
-      classCount,
-      courses: finalCoursesData
-    });
+    try {
+      // Gửi dữ liệu tới Backend thông qua API Route
+      const response = await fetch('/api/courses/initialize', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          semesterName,
+          totalStudents: numTotalStudents,
+          classCount,
+          courses: finalCoursesData
+        }),
+      });
 
-    const createdCourses: Course[] = finalCoursesData.map((c, i) => ({
-      courseId: `NEW_C${Date.now() + i}`,
-      courseCode: c.courseCode!,
-      courseName: c.courseName!,
-      semester: c.semester!,
-      year: c.year!,
-      lecturerId: c.lecturerId!,
-    }));
+      if (!response.ok) {
+        throw new Error('Lỗi khi khởi tạo khóa học từ server.');
+      }
 
-    alert(`Đã khởi tạo thành công ${numClassCount} lớp với tổng số ${emptyGroupsToCreate * numClassCount} nhóm trống!`);
-    onComplete(createdCourses);
-    onClose();
+      const createdCourses = await response.json();
+
+      alert(`Đã khởi tạo thành công ${numClassCount} lớp với tổng số ${emptyGroupsToCreate * numClassCount} nhóm trống!`);
+      onComplete(createdCourses);
+      onClose();
+
+    } catch (error) {
+      console.error("Failed to initialize courses:", error);
+      alert("Có lỗi xảy ra khi khởi tạo. Vui lòng thử lại.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const numTotalStudents = Number(totalStudents);
@@ -136,11 +169,21 @@ export function CourseInitializationWizard({ isOpen, onClose, onComplete }: Wiza
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="semesterName">Tên Kỳ học</Label>
-                <Input id="semesterName" value={semesterName} onChange={e => setSemesterName(e.target.value)} placeholder="Ví dụ: Summer 2025"/>
+                <Input 
+                  id="semesterName" 
+                  value={semesterName} 
+                  onChange={e => setSemesterName(e.target.value)} 
+                  placeholder="Ví dụ: Summer 2025"
+                />
               </div>
               <div>
                 <Label htmlFor="totalStudents">Tổng số sinh viên</Label>
-                <Input id="totalStudents" type="number" value={totalStudents} onChange={e => setTotalStudents(e.target.value === '' ? '' : parseInt(e.target.value))} />
+                <Input 
+                  id="totalStudents" 
+                  type="number" 
+                  value={totalStudents} 
+                  onChange={e => setTotalStudents(e.target.value === '' ? '' : parseInt(e.target.value))} 
+                />
               </div>
             </div>
           </div>
@@ -154,7 +197,14 @@ export function CourseInitializationWizard({ isOpen, onClose, onComplete }: Wiza
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="classCount">Số lượng lớp cần chia</Label>
-              <Input id="classCount" type="number" min="1" value={classCount} onChange={e => setClassCount(e.target.value === '' ? '' : parseInt(e.target.value))} className="col-span-1" />
+              <Input 
+                id="classCount" 
+                type="number" 
+                min="1" 
+                value={classCount} 
+                onChange={e => setClassCount(e.target.value === '' ? '' : parseInt(e.target.value))} 
+                className="col-span-1" 
+              />
               <p className="col-span-2 text-sm text-muted-foreground">
                 {(numClassCount > 0 && numTotalStudents > 0) ? `~${Math.floor(numTotalStudents / numClassCount)} sinh viên / lớp` : ''}
               </p>
@@ -175,8 +225,8 @@ export function CourseInitializationWizard({ isOpen, onClose, onComplete }: Wiza
                       </SelectTrigger>
                       <SelectContent>
                         {lecturers.map(lecturer => (
-                          <SelectItem key={lecturer.userId} value={lecturer.userId}>
-                            {lecturer.fullName}
+                          <SelectItem key={lecturer.userId || lecturer.id} value={lecturer.userId || lecturer.id}>
+                            {lecturer.fullName || lecturer.name}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -196,9 +246,15 @@ export function CourseInitializationWizard({ isOpen, onClose, onComplete }: Wiza
           )}
           {step === 2 && (
             <>
-              <Button variant="outline" onClick={() => setStep(1)}>Quay lại</Button>
-              <Button onClick={handleFinalize}>
-                Hoàn tất & Tạo nhóm <CheckCircle className="w-4 h-4 ml-2" />
+              <Button variant="outline" onClick={() => setStep(1)} disabled={isLoading}>
+                Quay lại
+              </Button>
+              <Button onClick={handleFinalize} disabled={isLoading}>
+                {isLoading ? (
+                    <>Đang xử lý... <Loader2 className="w-4 h-4 ml-2 animate-spin" /></>
+                ) : (
+                    <>Hoàn tất & Tạo nhóm <CheckCircle className="w-4 h-4 ml-2" /></>
+                )}
               </Button>
             </>
           )}

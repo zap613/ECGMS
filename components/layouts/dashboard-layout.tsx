@@ -5,7 +5,7 @@ import type React from "react"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { LayoutDashboard, BookOpen, Users, ClipboardList, Award, LogOut, Menu, X } from "lucide-react"
+import { LayoutDashboard, BookOpen, Users, ClipboardList, Award, LogOut, Menu, X, User as UserIcon } from "lucide-react"
 
 interface DashboardLayoutProps {
   children: React.ReactNode
@@ -35,6 +35,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
     { name: "My Group", href: "/student/group", icon: Users },
     { name: "My Tasks", href: "/student/tasks", icon: ClipboardList },
     { name: "My Grades", href: "/student/grades", icon: Award },
+    { name: "Profile", href: "/student/profile", icon: UserIcon },
   ]
 
   const adminNavItems = [
