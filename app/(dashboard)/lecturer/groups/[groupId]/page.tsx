@@ -12,7 +12,23 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import {
+  ArrowLeft,
+  Users,
+  User,
+  Mail,
+  Code2,
+  BookOpen,
+  UserPlus,
+  Search,
+  AlertCircle,
+  X,
+} from "lucide-react";
+import { getCurrentUser } from "@/lib/utils/auth";
+import { useToast } from "@/lib/hooks/use-toast";
+import { GroupService, type ApiGroup } from "@/lib/api/groupService";
+import type { StudentWithoutGroup } from "@/lib/types";
 import {
   Dialog,
   DialogContent,
@@ -20,31 +36,30 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-  ArrowLeft,
-  Users,
-  User,
-  Award,
-  CheckCircle,
-  XCircle,
-  AlertCircle,
-} from "lucide-react";
-import { getCurrentUser } from "@/lib/utils/auth";
-import { mockGroups } from "@/lib/mock-data/groups";
-import { mockUsers } from "@/lib/mock-data/auth";
-import { useToast } from "@/lib/hooks/use-toast";
-import { GroupService } from "@/lib/api/groupService";
 
 export default function GroupDetailPage() {
   const router = useRouter();
   const params = useParams();
   const [user, setUser] = useState<any>(null);
-  const [group, setGroup] = useState<any>(null);
-  const [groupMembers, setGroupMembers] = useState<any[]>([]);
-  const [showRejectDialog, setShowRejectDialog] = useState(false);
-  const [rejectionReason, setRejectionReason] = useState("");
+  const [group, setGroup] = useState<ApiGroup | null>(null);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [addingMember, setAddingMember] = useState<boolean>(false);
+  const [studentsWithoutGroup, setStudentsWithoutGroup] = useState<
+    StudentWithoutGroup[]
+  >([]);
+  const [studentSearch, setStudentSearch] = useState<string>("");
+  const [selectedStudentId, setSelectedStudentId] = useState<string>("");
+  const [openAddDialog, setOpenAddDialog] = useState<boolean>(false);
+  const [errorDialog, setErrorDialog] = useState<{
+    open: boolean;
+    title: string;
+    message: string;
+  }>({
+    open: false,
+    title: "",
+    message: "",
+  });
   const { toast } = useToast();
 
   useEffect(() => {
@@ -55,147 +70,187 @@ export default function GroupDetailPage() {
     }
     setUser(currentUser);
 
-    // Find group
     const groupId = params.groupId as string;
-    const foundGroup = mockGroups.find((g) => g.groupId === groupId);
 
-    if (!foundGroup) {
-      toast({ title: "Error", description: "Group not found" });
-      router.push("/lecturer/groups");
-      return;
-    }
+    const loadGroup = async () => {
+      try {
+        setLoading(true);
+        const data = await GroupService.getGroupById(groupId);
+        if (!data) {
+          toast({ title: "Lỗi", description: "Không tìm thấy nhóm" });
+          router.push("/lecturer/groups");
+          return;
+        }
+        setGroup(data);
+      } catch (error) {
+        console.error("Error loading group detail:", error);
+        toast({ title: "Lỗi", description: "Không thể tải chi tiết nhóm" });
+        router.push("/lecturer/groups");
+      } finally {
+        setLoading(false);
+      }
+    };
 
-    setGroup(foundGroup);
+    const loadStudentsWithoutGroup = async () => {
+      try {
+        const response = await fetch("/api/students-without-group", {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          cache: "no-store",
+        });
 
-    // Mock group members with detailed information
-    const members = [
-      {
-        userId: "S001",
-        fullName: "Tran Thi B",
-        major: "SE",
-        skills: ["Frontend", "React", "TypeScript", "UI/UX"],
-        role: "leader",
-        roleText: "Trưởng nhóm",
-        email: "tranthib@fpt.edu.vn",
-        avatarUrl: "/placeholder-user.jpg",
-      },
-      {
-        userId: "S002",
-        fullName: "Le Van C",
-        major: "SS",
-        skills: ["Backend", "Node.js", "Database", "API Design"],
-        role: "member",
-        roleText: "Thành viên",
-        email: "levanc@fpt.edu.vn",
-        avatarUrl: "/placeholder-user.jpg",
-      },
-      {
-        userId: "S003",
-        fullName: "Nguyen Van E",
-        major: "SE",
-        skills: ["DevOps", "CI/CD", "AWS", "Docker"],
-        role: "secretary",
-        roleText: "Thư ký",
-        email: "nguyenvane@fpt.edu.vn",
-        avatarUrl: "/placeholder-user.jpg",
-      },
-      {
-        userId: "S004",
-        fullName: "Bui Minh H",
-        major: "SS",
-        skills: ["Business Analysis", "Testing", "QA", "Documentation"],
-        role: "member",
-        roleText: "Thành viên",
-        email: "buiminhh@fpt.edu.vn",
-        avatarUrl: "/placeholder-user.jpg",
-      },
-      {
-        userId: "S005",
-        fullName: "Vuong Thanh I",
-        major: "SE",
-        skills: ["Frontend", "VueJS", "UI/UX", "Mobile"],
-        role: "treasurer",
-        roleText: "Thủ quỹ",
-        email: "vuongthanhi@fpt.edu.vn",
-        avatarUrl: "/placeholder-user.jpg",
-      },
-    ];
-    setGroupMembers(members);
+        if (!response.ok) {
+          throw new Error(`HTTP status ${response.status}`);
+        }
+
+        const data = (await response.json()) as StudentWithoutGroup[];
+        setStudentsWithoutGroup(data);
+      } catch (error) {
+        console.error("Error loading students without group:", error);
+      }
+    };
+
+    loadGroup();
+    loadStudentsWithoutGroup();
   }, [router, params.groupId, toast]);
 
-  if (!user || !group) return null;
-
-  const getApprovalStatusColor = (status: string) => {
-    switch (status) {
-      case "approved":
-        return "bg-green-100 text-green-700";
-      case "rejected":
-        return "bg-red-100 text-red-700";
-      case "pending":
-        return "bg-yellow-100 text-yellow-700";
-      default:
-        return "bg-gray-100 text-gray-700";
-    }
+  const handleOpenAddDialog = () => {
+    setSelectedStudentId("");
+    setStudentSearch("");
+    setOpenAddDialog(true);
   };
 
-  const getApprovalStatusText = (status: string) => {
-    switch (status) {
-      case "approved":
-        return "Đã duyệt";
-      case "rejected":
-        return "Từ chối";
-      case "pending":
-        return "Chờ duyệt";
-      default:
-        return "Không xác định";
-    }
-  };
-
-  const getRoleIcon = (role: string) => {
-    switch (role) {
-      case "leader":
-        return <Award className="w-4 h-4 text-yellow-600" />;
-      case "secretary":
-        return <User className="w-4 h-4 text-blue-600" />;
-      case "treasurer":
-        return <User className="w-4 h-4 text-green-600" />;
-      default:
-        return <User className="w-4 h-4 text-gray-600" />;
-    }
-  };
-
-  const handleApprove = () => {
-    GroupService.approveGroup(group.groupId, user.userId)
-      .then(() =>
-        toast({
-          title: "Phê duyệt nhóm",
-          description: `Đã phê duyệt nhóm ${group.groupName}`,
-        })
-      )
-      .catch(() => toast({ title: "Lỗi", description: "Không thể phê duyệt" }));
-  };
-
-  const handleReject = () => {
-    if (!rejectionReason.trim()) {
+  const handleAddMember = async () => {
+    if (!group) return;
+    if (!selectedStudentId) {
       toast({
         title: "Lỗi",
-        description: "Vui lòng nhập lý do từ chối",
+        description: "Vui lòng chọn một sinh viên cần thêm",
+        variant: "destructive",
       });
       return;
     }
 
-    GroupService.rejectGroup(group.groupId, rejectionReason, user.userId)
-      .then(() =>
+    // Kiểm tra giới hạn thành viên trước khi gọi API
+    if (group.maxMembers !== null && group.members.length >= group.maxMembers) {
+      const errorMsg = `Nhóm đã đạt số lượng thành viên tối đa.\n\nSố thành viên hiện tại: ${group.members.length} / ${group.maxMembers}`;
+
+      toast({
+        title: "Không thể thêm thành viên",
+        description: errorMsg,
+        variant: "destructive",
+      });
+
+      // Hiển thị error dialog
+      setErrorDialog({
+        open: true,
+        title: "Không thể thêm thành viên",
+        message: errorMsg,
+      });
+      return;
+    }
+
+    try {
+      setAddingMember(true);
+      await GroupService.addMemberToGroupViaApi({
+        userId: selectedStudentId,
+        groupId: group.id,
+      });
+
+      toast({
+        title: "Thêm thành viên thành công",
+        description: "Sinh viên đã được thêm vào nhóm",
+      });
+
+      // Refresh group detail to see new member list
+      const updated = await GroupService.getGroupById(group.id);
+      if (updated) {
+        setGroup(updated);
+      }
+
+      // Remove this student from local "without group" list
+      setStudentsWithoutGroup((prev) =>
+        prev.filter((s) => s.studentId !== selectedStudentId)
+      );
+
+      setOpenAddDialog(false);
+    } catch (error) {
+      // Xử lý lỗi đặc biệt cho trường hợp đạt giới hạn thành viên
+      const errorMessage =
+        error instanceof Error && error.message
+          ? error.message
+          : "Không thể thêm sinh viên vào nhóm";
+
+      const isMaxMembersError =
+        errorMessage.includes("đạt số lượng thành viên tối đa") ||
+        errorMessage.includes("giới hạn thành viên") ||
+        errorMessage.includes("max members") ||
+        errorMessage.toLowerCase().includes("maximum") ||
+        errorMessage.toLowerCase().includes("limit");
+
+      if (isMaxMembersError) {
+        const maxMembersText = group.maxMembers
+          ? `\n\nSố thành viên hiện tại: ${group.members.length} / ${group.maxMembers}`
+          : "";
+
+        // Hiển thị toast
         toast({
-          title: "Từ chối nhóm",
-          description: `Đã từ chối nhóm ${group.groupName}`,
-        })
-      )
-      .catch(() => toast({ title: "Lỗi", description: "Không thể từ chối" }));
-    setShowRejectDialog(false);
-    setRejectionReason("");
-    // In real app, this would call API to reject group with reason
+          title: "Không thể thêm thành viên",
+          description: `Nhóm đã đạt số lượng thành viên tối đa.${maxMembersText}`,
+          variant: "destructive",
+        });
+
+        // Hiển thị error dialog để đảm bảo người dùng thấy lỗi
+        setErrorDialog({
+          open: true,
+          title: "Không thể thêm thành viên",
+          message: `Nhóm đã đạt số lượng thành viên tối đa.${maxMembersText}`,
+        });
+      } else {
+        // Hiển thị toast
+        toast({
+          title: "Lỗi",
+          description: errorMessage,
+          variant: "destructive",
+        });
+
+        // Hiển thị error dialog
+        setErrorDialog({
+          open: true,
+          title: "Lỗi khi thêm thành viên",
+          message: errorMessage,
+        });
+      }
+    } finally {
+      setAddingMember(false);
+    }
   };
+
+  if (!user) return null;
+  if (loading || !group) {
+    return (
+      <DashboardLayout role="lecturer">
+        <div className="p-6 text-gray-600">Đang tải chi tiết nhóm...</div>
+      </DashboardLayout>
+    );
+  }
+
+  const statusColor =
+    group.status === "active"
+      ? "bg-green-100 text-green-700"
+      : "bg-gray-100 text-gray-700";
+
+  const filteredStudentsForSelect = studentsWithoutGroup.filter((s) => {
+    if (!studentSearch) return true;
+    const term = studentSearch.toLowerCase();
+    return (
+      s.userProfileViewModel.fullName.toLowerCase().includes(term) ||
+      s.user.email.toLowerCase().includes(term) ||
+      s.user.username.toLowerCase().includes(term)
+    );
+  });
 
   return (
     <DashboardLayout role="lecturer">
@@ -210,118 +265,50 @@ export default function GroupDetailPage() {
             Quay lại
           </Button>
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">
-              {group.groupName}
-            </h1>
-            <p className="text-gray-600 mt-1">{group.courseCode}</p>
+            <h1 className="text-3xl font-bold text-gray-900">{group.name}</h1>
+            <p className="text-gray-600 mt-1 flex items-center gap-2">
+              <BookOpen className="w-4 h-4" />
+              {group.courseName}
+            </p>
           </div>
         </div>
 
-        {/* Group Status */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Users className="w-5 h-5" />
-              Trạng thái nhóm
+              Thông tin nhóm
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div>
-                <p className="text-sm text-gray-600">Trạng thái phê duyệt</p>
-                <Badge className={getApprovalStatusColor(group.approvalStatus)}>
-                  {getApprovalStatusText(group.approvalStatus)}
+                <p className="text-sm text-gray-600">Trạng thái</p>
+                <Badge className={statusColor}>
+                  {group.status ? group.status : "Chưa cập nhật"}
                 </Badge>
               </div>
               <div>
                 <p className="text-sm text-gray-600">Số thành viên</p>
                 <p className="font-semibold">
-                  {group.memberCount}/{group.maxMembers}
+                  {group.members.length}
+                  {group.maxMembers ? ` / ${group.maxMembers}` : ""}
                 </p>
               </div>
               <div>
-                <p className="text-sm text-gray-600">Chuyên ngành</p>
-                <div className="flex gap-1">
-                  {group.majors.map((major: string) => (
-                    <Badge key={major} variant="outline" className="text-xs">
-                      {major}
-                    </Badge>
-                  ))}
-                </div>
+                <p className="text-sm text-gray-600">Chủ đề</p>
+                <p className="font-semibold">
+                  {group.topicName || "Chưa có chủ đề"}
+                </p>
               </div>
-              <div>
-                <p className="text-sm text-gray-600">Ngày tạo</p>
-                <p className="font-semibold">{group.createdDate}</p>
-              </div>
+              {/* <div>
+                <p className="text-sm text-gray-600">Mã môn học</p>
+                <p className="font-semibold">{group.courseId}</p>
+              </div> */}
             </div>
-
-            {group.rejectionReason && (
-              <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-md">
-                <div className="flex items-start gap-2">
-                  <AlertCircle className="w-5 h-5 text-red-600 mt-0.5" />
-                  <div>
-                    <p className="font-medium text-red-800">Lý do từ chối:</p>
-                    <p className="text-sm text-red-700 mt-1">
-                      {group.rejectionReason}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {group.approvalStatus === "pending" && (
-              <div className="mt-4 flex gap-2">
-                <Button
-                  onClick={handleApprove}
-                  className="bg-green-600 hover:bg-green-700"
-                >
-                  <CheckCircle className="w-4 h-4 mr-2" />
-                  Phê duyệt nhóm
-                </Button>
-                <Dialog
-                  open={showRejectDialog}
-                  onOpenChange={setShowRejectDialog}
-                >
-                  <DialogTrigger asChild>
-                    <Button variant="destructive">
-                      <XCircle className="w-4 h-4 mr-2" />
-                      Từ chối nhóm
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Từ chối nhóm</DialogTitle>
-                      <DialogDescription>
-                        Vui lòng nhập lý do từ chối nhóm {group.groupName}
-                      </DialogDescription>
-                    </DialogHeader>
-                    <div className="py-4">
-                      <Textarea
-                        placeholder="Nhập lý do từ chối và hướng dẫn điều chỉnh..."
-                        value={rejectionReason}
-                        onChange={(e) => setRejectionReason(e.target.value)}
-                        rows={4}
-                      />
-                    </div>
-                    <DialogFooter>
-                      <Button
-                        variant="outline"
-                        onClick={() => setShowRejectDialog(false)}
-                      >
-                        Hủy
-                      </Button>
-                      <Button variant="destructive" onClick={handleReject}>
-                        Xác nhận từ chối
-                      </Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
-              </div>
-            )}
           </CardContent>
         </Card>
 
-        {/* Group Members */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -329,201 +316,212 @@ export default function GroupDetailPage() {
               Thành viên nhóm
             </CardTitle>
             <CardDescription>
-              Danh sách thành viên, chuyên ngành, kỹ năng và vai trò trong nhóm
+              Danh sách thành viên, email và kỹ năng trong nhóm
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {groupMembers.map((member) => (
-                <Card
-                  key={member.userId}
-                  className="hover:shadow-md transition-shadow"
-                >
-                  <CardContent className="p-4">
-                    <div className="flex items-start gap-4">
-                      <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center">
-                        <User className="w-6 h-6 text-gray-600" />
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <h3 className="font-semibold text-lg">
-                            {member.fullName}
-                          </h3>
-                          <Badge variant="outline" className="text-xs">
-                            {member.major}
-                          </Badge>
-                          <div className="flex items-center gap-1">
-                            {getRoleIcon(member.role)}
-                            <span className="text-sm text-gray-600">
-                              {member.roleText}
-                            </span>
-                          </div>
+            <div className="mb-4 flex justify-end">
+              <Button
+                size="sm"
+                className="bg-green-600 hover:bg-green-700"
+                onClick={handleOpenAddDialog}
+              >
+                <UserPlus className="w-4 h-4 mr-2" />
+                Thêm sinh viên chưa có nhóm
+              </Button>
+            </div>
+            {group.members.length === 0 ? (
+              <p className="text-gray-600">Nhóm hiện chưa có thành viên nào.</p>
+            ) : (
+              <div className="space-y-4">
+                {group.members.map((member) => (
+                  <Card
+                    key={member.userId}
+                    className="hover:shadow-md transition-shadow"
+                  >
+                    <CardContent className="p-4">
+                      <div className="flex items-start gap-4">
+                        <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center">
+                          <User className="w-6 h-6 text-gray-600" />
                         </div>
-                        <p className="text-sm text-gray-600 mb-3">
-                          {member.email}
-                        </p>
-                        <div>
-                          <p className="text-sm font-medium text-gray-700 mb-2">
-                            Kỹ năng:
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between gap-2 mb-1">
+                            <div className="flex items-center gap-2">
+                              <h3 className="font-semibold text-lg">
+                                {member.username}
+                              </h3>
+                              {member.roleInGroup && (
+                                <Badge
+                                  variant="outline"
+                                  className="text-xs capitalize"
+                                >
+                                  {member.roleInGroup}
+                                </Badge>
+                              )}
+                            </div>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={async () => {
+                                if (
+                                  !window.confirm(
+                                    `Bạn có chắc muốn xóa ${member.username} khỏi nhóm?`
+                                  )
+                                ) {
+                                  return;
+                                }
+
+                                try {
+                                  await GroupService.removeMemberFromGroupViaApi(
+                                    { memberId: member.userId }
+                                  );
+
+                                  setGroup({
+                                    ...group,
+                                    members: group.members.filter(
+                                      (m) => m.userId !== member.userId
+                                    ),
+                                  });
+
+                                  toast({
+                                    title: "Đã xóa thành viên khỏi nhóm",
+                                    description: `${member.username} đã được xóa khỏi nhóm thành công`,
+                                  });
+                                } catch (error) {
+                                  console.error(
+                                    "Error removing member from group:",
+                                    error
+                                  );
+                                  const description =
+                                    error instanceof Error && error.message
+                                      ? error.message
+                                      : "Không thể xóa sinh viên khỏi nhóm";
+                                  toast({
+                                    title: "Lỗi",
+                                    description,
+                                    variant: "destructive",
+                                  });
+                                }
+                              }}
+                            >
+                              Xóa khỏi nhóm
+                            </Button>
+                          </div>
+                          <p className="text-sm text-gray-600 mb-2 flex items-center gap-2">
+                            <Mail className="w-4 h-4 text-gray-400" />
+                            {member.email}
                           </p>
-                          <div className="flex flex-wrap gap-1">
-                            {member.skills.map((skill: string) => (
-                              <Badge
-                                key={skill}
-                                variant="secondary"
-                                className="text-xs"
-                              >
-                                {skill}
-                              </Badge>
-                            ))}
-                          </div>
-                        </div>
-                        <div className="mt-3 flex gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              const reason = prompt("Lý do xóa thành viên?");
-                              if (!reason) return;
-                              GroupService.removeMember({
-                                groupId: group.groupId,
-                                studentId: member.userId,
-                                reason,
-                                changedBy: user.userId,
-                                changedAt: new Date().toISOString(),
-                              })
-                                .then(() =>
-                                  toast({
-                                    title: "Đã xóa thành viên",
-                                    description: member.fullName,
-                                  })
-                                )
-                                .catch(() =>
-                                  toast({
-                                    title: "Lỗi",
-                                    description: "Không thể xóa",
-                                  })
-                                );
-                            }}
-                          >
-                            Xóa thành viên
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              const scoreStr = prompt("Điểm đóng góp (0-100)?");
-                              if (!scoreStr) return;
-                              const score = Number(scoreStr);
-                              if (Number.isNaN(score)) return;
-                              GroupService.setContributionScore({
-                                groupId: group.groupId,
-                                studentId: member.userId,
-                                score,
-                              })
-                                .then(() =>
-                                  toast({
-                                    title: "Đã ghi nhận đóng góp",
-                                    description: `${member.fullName}: ${score}`,
-                                  })
-                                )
-                                .catch(() =>
-                                  toast({
-                                    title: "Lỗi",
-                                    description: "Không thể lưu điểm",
-                                  })
-                                );
-                            }}
-                          >
-                            Ghi điểm đóng góp
-                          </Button>
+                          {member.skillSet && (
+                            <div className="flex items-center gap-2 text-sm text-gray-700">
+                              <Code2 className="w-4 h-4 text-gray-500" />
+                              <span>Kỹ năng: {member.skillSet}</span>
+                            </div>
+                          )}
                         </div>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-            <div className="mt-4 flex flex-wrap gap-2">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  const studentId = prompt(
-                    "Nhập mã SV cần thêm (chưa có nhóm)"
-                  );
-                  const reason = prompt("Lý do thêm vào nhóm?");
-                  if (!studentId || !reason) return;
-                  GroupService.addMember({
-                    groupId: group.groupId,
-                    studentId,
-                    reason,
-                    changedBy: user.userId,
-                    changedAt: new Date().toISOString(),
-                  })
-                    .then(() =>
-                      toast({
-                        title: "Đã thêm thành viên",
-                        description: studentId,
-                      })
-                    )
-                    .catch(() =>
-                      toast({ title: "Lỗi", description: "Không thể thêm" })
-                    );
-                }}
-              >
-                Thêm thành viên chưa có nhóm
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  const proposal = prompt(
-                    "Đề xuất điều chỉnh (tách/ghép/đổi thành viên...)"
-                  );
-                  if (!proposal) return;
-                  GroupService.proposeAdjustment({
-                    groupId: group.groupId,
-                    proposal,
-                    proposedBy: user.userId,
-                    proposedAt: new Date().toISOString(),
-                  })
-                    .then(() =>
-                      toast({ title: "Đã gửi đề xuất", description: proposal })
-                    )
-                    .catch(() =>
-                      toast({
-                        title: "Lỗi",
-                        description: "Không thể gửi đề xuất",
-                      })
-                    );
-                }}
-              >
-                Đề xuất điều chỉnh nhóm
-              </Button>
-              <Button
-                className={`${
-                  group.ready
-                    ? "bg-green-600 hover:bg-green-700"
-                    : "bg-gray-700 hover:bg-gray-800"
-                }`}
-                onClick={() => {
-                  const next = !group.ready;
-                  GroupService.markGroupReady(group.groupId, next, user.userId)
-                    .then(() =>
-                      toast({
-                        title: next ? "Đánh dấu sẵn sàng" : "Bỏ sẵn sàng",
-                        description: group.groupName,
-                      })
-                    )
-                    .catch(() =>
-                      toast({ title: "Lỗi", description: "Không thể cập nhật" })
-                    );
-                }}
-              >
-                {group.ready ? "Đã sẵn sàng" : "Đánh dấu sẵn sàng"}
-              </Button>
-            </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
+
+        <Dialog open={openAddDialog} onOpenChange={setOpenAddDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Thêm sinh viên chưa có nhóm</DialogTitle>
+              <DialogDescription>
+                Chọn một sinh viên từ danh sách sinh viên chưa có nhóm để thêm
+                vào nhóm hiện tại.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-2">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">
+                  Tìm kiếm sinh viên
+                </label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <Input
+                    placeholder="Nhập tên, email hoặc username..."
+                    value={studentSearch}
+                    onChange={(e) => setStudentSearch(e.target.value)}
+                    className="pl-9"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">
+                  Chọn sinh viên
+                </label>
+                <select
+                  value={selectedStudentId}
+                  onChange={(e) => setSelectedStudentId(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                >
+                  <option value="">-- Chọn sinh viên --</option>
+                  {filteredStudentsForSelect.map((s) => (
+                    <option key={s.studentId} value={s.studentId}>
+                      {s.userProfileViewModel.fullName} - {s.user.email} -{" "}
+                      {s.user.username}
+                    </option>
+                  ))}
+                </select>
+                {filteredStudentsForSelect.length === 0 && (
+                  <p className="text-xs text-gray-500">
+                    Không còn sinh viên nào chưa có nhóm hoặc không khớp từ
+                    khóa.
+                  </p>
+                )}
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setOpenAddDialog(false)}
+                disabled={addingMember}
+              >
+                Hủy
+              </Button>
+              <Button onClick={handleAddMember} disabled={addingMember}>
+                {addingMember ? "Đang thêm..." : "Thêm vào nhóm"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Error Dialog */}
+        <Dialog
+          open={errorDialog.open}
+          onOpenChange={(open) => setErrorDialog({ ...errorDialog, open })}
+        >
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
+                  <AlertCircle className="w-6 h-6 text-red-600" />
+                </div>
+                <DialogTitle className="text-red-600">
+                  {errorDialog.title}
+                </DialogTitle>
+              </div>
+            </DialogHeader>
+            <div className="pt-4 px-6 pb-2">
+              <p className="text-gray-700 whitespace-pre-line text-sm">
+                {errorDialog.message}
+              </p>
+            </div>
+            <DialogFooter>
+              <Button
+                onClick={() => setErrorDialog({ ...errorDialog, open: false })}
+                className="bg-red-600 hover:bg-red-700"
+              >
+                Đã hiểu
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );

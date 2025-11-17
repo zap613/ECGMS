@@ -14,6 +14,7 @@ import {
   LogOut,
   Menu,
   X,
+  UserX,
 } from "lucide-react";
 
 interface DashboardLayoutProps {
@@ -34,6 +35,11 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
     { name: "Dashboard", href: "/lecturer/dashboard", icon: LayoutDashboard },
     // { name: "Courses", href: "/lecturer/courses", icon: BookOpen },
     { name: "Groups", href: "/lecturer/groups", icon: Users },
+    {
+      name: "Ungrouped Students",
+      href: "/lecturer/students-without-group",
+      icon: UserX,
+    },
     { name: "Tasks", href: "/lecturer/tasks", icon: ClipboardList },
     { name: "Grades", href: "/lecturer/grades", icon: Award },
   ];

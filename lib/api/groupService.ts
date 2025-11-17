@@ -9,30 +9,146 @@ import type {
   ContributionScoreInput,
 } from "@/lib/types";
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+// Types that match the real Group API
+export interface ApiGroupMember {
+  userId: string;
+  roleInGroup: string;
+  username: string;
+  email: string;
+  joinedAt: string;
+  skillSet: string;
+}
+
+export interface ApiGroup {
+  id: string;
+  name: string;
+  courseId: string;
+  courseName: string;
+  topicId: string | null;
+  topicName: string | null;
+  maxMembers: number | null;
+  members: ApiGroupMember[];
+  status: string | null;
+}
+
+export interface AddGroupMemberPayload {
+  userId: string;
+  groupId: string;
+}
+
+export interface RemoveGroupMemberPayload {
+  memberId: string;
+}
 
 export class GroupService {
   // Get all groups
-  static async getGroups(): Promise<Group[]> {
-    // TODO: Replace with actual API call
-    // const response = await fetch(`${API_BASE_URL}/groups`)
-    // return response.json()
+  static async getGroups(): Promise<ApiGroup[]> {
+    // Use Next.js API route as proxy to avoid CORS issues
+    const response = await fetch("/api/groups", {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      cache: "no-store",
+    });
 
-    // Mock implementation for now
-    const mockGroups = await import("@/lib/mock-data/groups");
-    return mockGroups.mockGroups;
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => "");
+      throw new Error(
+        errorText || `Failed to load groups. Status: ${response.status}`
+      );
+    }
+
+    const data = (await response.json()) as ApiGroup[];
+    return data;
   }
 
   // Get group by ID
-  static async getGroupById(groupId: string): Promise<Group | null> {
-    // TODO: Replace with actual API call
-    // const response = await fetch(`${API_BASE_URL}/groups/${groupId}`)
-    // return response.json()
+  static async getGroupById(groupId: string): Promise<ApiGroup | null> {
+    // Use Next.js API route as proxy to avoid CORS issues
+    const response = await fetch(`/api/groups/${groupId}`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      cache: "no-store",
+    });
 
-    // Mock implementation for now
-    const mockGroups = await import("@/lib/mock-data/groups");
-    return mockGroups.mockGroups.find((g) => g.groupId === groupId) || null;
+    if (response.status === 404) {
+      return null;
+    }
+
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => "");
+      throw new Error(
+        errorText || `Failed to load group detail. Status: ${response.status}`
+      );
+    }
+
+    const data = (await response.json()) as ApiGroup;
+    return data;
+  }
+
+  // Add member from "students without group" list
+  static async addMemberToGroupViaApi(
+    payload: AddGroupMemberPayload
+  ): Promise<void> {
+    const response = await fetch("/api/group-member", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      // Cố gắng parse JSON error từ API route
+      let errorMessage = "";
+      try {
+        const errorJson: any = await response.json();
+        if (errorJson) {
+          if (typeof errorJson.message === "string") {
+            errorMessage = errorJson.message;
+          } else if (typeof errorJson.error === "string") {
+            errorMessage = errorJson.error;
+          }
+        }
+      } catch (parseError) {
+        // Nếu không parse được JSON, dùng message mặc định
+        console.warn("Could not parse error response:", parseError);
+      }
+
+      // Nếu không có message từ API, dùng message mặc định dựa trên status code
+      if (!errorMessage) {
+        if (response.status === 400) {
+          errorMessage = "Nhóm đã đạt số lượng thành viên tối đa";
+        } else {
+          errorMessage = `Failed to add member to group. Status: ${response.status}`;
+        }
+      }
+
+      throw new Error(errorMessage);
+    }
+  }
+
+  // Remove member from group via API (by memberId / userId from backend)
+  static async removeMemberFromGroupViaApi(
+    payload: RemoveGroupMemberPayload
+  ): Promise<void> {
+    const response = await fetch(`/api/group-member/${payload.memberId}`, {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => "");
+      throw new Error(
+        errorText ||
+          `Failed to remove member from group. Status: ${response.status}`
+      );
+    }
   }
 
   // Get group members
@@ -43,7 +159,9 @@ export class GroupService {
 
     // Mock implementation for now
     const mockGroups = await import("@/lib/mock-data/groups");
-    return mockGroups.mockGroupMembers.filter((m) => m.groupId === groupId);
+    return mockGroups.mockGroupMembers.filter(
+      (m: GroupMember & { groupId?: string }) => m.groupId === groupId
+    );
   }
 
   // Get groups by course ID
