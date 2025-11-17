@@ -30,18 +30,20 @@ export function CourseInitializationWizard({ isOpen, onClose, onComplete }: Wiza
   const [semesterName, setSemesterName] = React.useState('');
   const [totalStudents, setTotalStudents] = React.useState<number | ''>('');
   const [classCount, setClassCount] = React.useState<number | ''>(1);
-  const [courses, setCourses] = React.useState<Partial<Course & { lecturerId: string }>[]>([]);
   
-  // State quản lý dữ liệu thực và trạng thái loading
+  // State courses lưu dữ liệu tạm thời ở FE
+  const [courses, setCourses] = React.useState<Partial<Course & { lecturerId: string, description?: string }>[]>([]);
+  
   const [lecturers, setLecturers] = React.useState<any[]>([]);
   const [isLoading, setIsLoading] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
-  // Fetch danh sách giảng viên từ API Proxy khi mở Dialog
+  // Fetch danh sách giảng viên
   React.useEffect(() => {
     const fetchLecturers = async () => {
       setIsLoading(true);
       try {
+        // Lưu ý: Đảm bảo route này trả về đúng cấu trúc mảng giảng viên
         const response = await fetch('/api/users/lecturers');
         if (response.ok) {
           const data = await response.json();
@@ -66,17 +68,18 @@ export function CourseInitializationWizard({ isOpen, onClose, onComplete }: Wiza
     }
   }, [isOpen]);
 
-  // Tự động tính toán danh sách lớp dựa trên số lượng
+  // Tự động tính toán danh sách lớp
   React.useEffect(() => {
     const numClasses = Number(classCount);
     const numTotalStudents = Number(totalStudents);
     if (step === 2 && numClasses > 0 && numTotalStudents > 0) {
       const newCourses = Array.from({ length: numClasses }, (_, i) => ({
-        courseCode: `${semesterName.replace(/\s/g, '')}-C${i + 1}`,
-        courseName: `EXE101 - Lớp ${i + 1}`,
+        courseCode: `${semesterName.replace(/\s/g, '')}_C${i + 1}`, // Format code không dấu cách
+        courseName: `EXE101 ${semesterName} - Class ${i + 1}`,
         semester: semesterName,
         year: new Date().getFullYear(),
-        lecturerId: ''
+        lecturerId: '',
+        description: '' // Init description
       }));
       setCourses(newCourses);
     }
@@ -102,9 +105,10 @@ export function CourseInitializationWizard({ isOpen, onClose, onComplete }: Wiza
 
     if (!numClassCount || numClassCount <= 0 || !numTotalStudents) return;
 
+    // Validate Lecturer (Có thể bỏ qua nếu cho phép tạo lớp không có GV)
     if (courses.some(c => !c.lecturerId)) {
-      alert("Vui lòng gán giảng viên cho tất cả các lớp.");
-      return;
+       const confirm = window.confirm("Một số lớp chưa có giảng viên. Bạn có chắc chắn muốn tiếp tục?");
+       if (!confirm) return;
     }
 
     setIsSubmitting(true);
@@ -114,24 +118,25 @@ export function CourseInitializationWizard({ isOpen, onClose, onComplete }: Wiza
     const maxTeams = Math.floor(studentsPerClass / MIN_GROUP_SIZE);
     const emptyGroupsToCreate = Math.ceil(maxTeams * (1 + SAFETY_FACTOR));
 
+    // Chuẩn bị dữ liệu gửi sang Proxy
     const finalCoursesData = courses.map(c => ({
-      ...c,
-      studentCount: studentsPerClass,
-      emptyGroupsToCreate: emptyGroupsToCreate
+      courseCode: c.courseCode,
+      courseName: c.courseName,
+      semester: c.semester, // Gửi kèm để Proxy nhét vào description
+      lecturerId: c.lecturerId, // Gửi kèm để Proxy nhét vào description
+      description: c.description,
+      emptyGroupsToCreate: emptyGroupsToCreate, // Dữ liệu cho logic tạo nhóm
     }));
 
     try {
-      // Gửi dữ liệu tới Backend thông qua API Route
+      // Gọi API Proxy
       const response = await fetch('/api/courses/initialize', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          semesterName,
-          totalStudents: numTotalStudents,
-          classCount,
-          courses: finalCoursesData
+          courses: finalCoursesData // Chỉ cần gửi danh sách courses đã xử lý
         }),
       });
 
@@ -139,10 +144,15 @@ export function CourseInitializationWizard({ isOpen, onClose, onComplete }: Wiza
         throw new Error('Lỗi khi khởi tạo khóa học từ server.');
       }
 
-      const createdCourses = await response.json();
+      const result = await response.json();
 
-      alert(`Đã khởi tạo thành công ${numClassCount} lớp với tổng số ${emptyGroupsToCreate * numClassCount} nhóm trống!`);
-      onComplete(createdCourses);
+      if (result.errors && result.errors.length > 0) {
+          alert(`Đã tạo được ${result.created.length} lớp, nhưng có lỗi: \n${result.errors.join('\n')}`);
+      } else {
+          alert(`Đã khởi tạo thành công ${result.created.length} lớp!`);
+      }
+      
+      onComplete(result.created);
       onClose();
 
     } catch (error) {
@@ -153,8 +163,8 @@ export function CourseInitializationWizard({ isOpen, onClose, onComplete }: Wiza
     }
   };
 
-  const numTotalStudents = Number(totalStudents);
-  const numClassCount = Number(classCount);
+  const numTotalStudentsCalc = Number(totalStudents);
+  const numClassCountCalc = Number(classCount);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -199,7 +209,7 @@ export function CourseInitializationWizard({ isOpen, onClose, onComplete }: Wiza
               <p className="text-sm text-muted-foreground">Tổng số {totalStudents} sinh viên.</p>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="classCount">Số lượng lớp cần chia</Label>
+              <Label htmlFor="classCount" className="col-span-1">Số lượng lớp</Label>
               <Input 
                 id="classCount" 
                 type="number" 
@@ -209,27 +219,27 @@ export function CourseInitializationWizard({ isOpen, onClose, onComplete }: Wiza
                 className="col-span-1" 
               />
               <p className="col-span-2 text-sm text-muted-foreground">
-                {(numClassCount > 0 && numTotalStudents > 0) ? `~${Math.floor(numTotalStudents / numClassCount)} sinh viên / lớp` : ''}
+                {(numClassCountCalc > 0 && numTotalStudentsCalc > 0) ? `~${Math.floor(numTotalStudentsCalc / numClassCountCalc)} sinh viên / lớp` : ''}
               </p>
             </div>
             
-            <div className="max-h-64 overflow-y-auto pr-4 space-y-4">
+            <div className="max-h-64 overflow-y-auto pr-4 space-y-4 border rounded-md p-2">
               {courses.map((course, index) => (
-                <div key={index} className="grid grid-cols-3 gap-4 p-4 border rounded-lg items-center">
+                <div key={index} className="grid grid-cols-3 gap-4 p-3 border rounded-lg items-center bg-slate-50 dark:bg-slate-900">
                   <div className="col-span-1">
-                    <Label>Mã lớp</Label>
-                    <p className="font-semibold">{course.courseCode}</p>
+                    <Label className="text-xs text-muted-foreground">Mã lớp</Label>
+                    <p className="font-medium text-sm">{course.courseCode}</p>
                   </div>
                   <div className="col-span-2">
-                    <Label>Giảng viên phụ trách</Label>
+                    <Label className="text-xs text-muted-foreground">Giảng viên phụ trách</Label>
                     <Select onValueChange={(value) => handleCourseLecturerChange(index, value)} value={course.lecturerId}>
-                      <SelectTrigger>
+                      <SelectTrigger className="h-8">
                         <SelectValue placeholder={isLoading ? "Đang tải..." : "Chọn giảng viên"} />
                       </SelectTrigger>
                       <SelectContent>
                         {lecturers.map(lecturer => (
                           <SelectItem key={lecturer.userId || lecturer.id} value={lecturer.userId || lecturer.id}>
-                            {lecturer.fullName || lecturer.name || lecturer.username}
+                            {lecturer.fullName || lecturer.name || lecturer.username || "Unknown Lecturer"}
                           </SelectItem>
                         ))}
                       </SelectContent>

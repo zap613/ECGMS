@@ -10,10 +10,8 @@ export async function GET(req: Request) {
   const target = `${API_BASE}/Course?PageNumber=${page}&PageSize=${size}`;
 
   try {
-    const res = await fetch(target, {
-      method: "GET",
-      headers: { "Content-Type": "application/json" },
-      cache: "no-store",
+    const res = await fetch("http://140.245.42.78:5050/api/Course?PageNumber=1&PageSize=1000", {
+    cache: "no-store"
     });
 
     if (!res.ok) {
