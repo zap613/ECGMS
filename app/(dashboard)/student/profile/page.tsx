@@ -4,14 +4,13 @@ import * as React from "react"
 import { DashboardLayout } from "@/components/layouts/dashboard-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { Save, Loader2, UserCircle } from "lucide-react"
+import { Loader2, UserCircle } from "lucide-react"
 import { getCurrentUser, updateCurrentUser } from "@/lib/utils/auth"
-import { mockMajors } from "@/lib/mock-data/majors" // Import mock majors
-import type { User } from "@/lib/types"
+import type { User, MajorItem } from "@/lib/types" // Import MajorItem từ file types đã cập nhật
+import { MajorService } from "@/lib/api/majorService" // Import Service Adapter mới tạo
 
 // Giả sử có danh sách các skill có thể chọn
 const availableSkills = ["Frontend", "Backend", "React", "Node.js", "Database", "DevOps", "CI/CD", "AWS", "UI/UX", "Business Analyst", "Tester", "QA", "VueJS", "Angular"];
@@ -22,15 +21,32 @@ export default function StudentProfilePage() {
   const [selectedSkills, setSelectedSkills] = React.useState<string[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [isSaving, setIsSaving] = React.useState(false);
+  
+  // State cho danh sách chuyên ngành
+  const [majors, setMajors] = React.useState<MajorItem[]>([]);
 
   React.useEffect(() => {
-    const currentUser = getCurrentUser();
-    setUser(currentUser);
-    if (currentUser) {
-      setSelectedMajor(currentUser.major);
-      setSelectedSkills(currentUser.skillSet || []);
-    }
-    setIsLoading(false);
+    const initData = async () => {
+      // 1. Load User
+      const currentUser = getCurrentUser() as User | null;
+      setUser(currentUser);
+      if (currentUser) {
+        setSelectedMajor(currentUser.major);
+        setSelectedSkills(currentUser.skillSet || []);
+      }
+
+      // 2. Load Majors từ API
+      try {
+        const majorsData = await MajorService.getMajors();
+        setMajors(majorsData);
+      } catch (err) {
+        console.error("Failed to load majors", err);
+      }
+
+      setIsLoading(false);
+    };
+
+    initData();
   }, []);
 
   const handleSkillToggle = (skill: string) => {
@@ -45,17 +61,15 @@ export default function StudentProfilePage() {
 
     const updatedUserData: User = {
       ...user,
-      major: selectedMajor as ("SE" | "SS" | undefined),
+      major: selectedMajor as ("SE" | "SS" | undefined), // Cast tạm thời để tương thích type User cũ
       skillSet: selectedSkills,
     };
 
-    console.log("[Mock Save] Updating profile:", updatedUserData);
-    // TƯƠNG LAI: Gọi API
-    // await UserProfileService.updateUserProfile({ id: user.userId, requestBody: updatedUserData });
-
-    // HIỆN TẠI: Cập nhật mock data và localStorage
-    updateCurrentUser(updatedUserData); // Cập nhật localStorage
-    setUser(updatedUserData); // Cập nhật state cục bộ
+    console.log("[Save Profile] Updating:", updatedUserData);
+    
+    // Cập nhật local storage
+    updateCurrentUser(updatedUserData);
+    setUser(updatedUserData);
 
     await new Promise(resolve => setTimeout(resolve, 1000)); // Giả lập độ trễ
     setIsSaving(false);
@@ -122,9 +136,10 @@ export default function StudentProfilePage() {
                       <SelectValue placeholder="Chọn chuyên ngành của bạn" />
                     </SelectTrigger>
                     <SelectContent>
-                      {mockMajors.map(major => (
-                        <SelectItem key={major.majorId} value={major.majorCode}>
-                          {major.majorName} ({major.majorCode})
+                      {/* Sử dụng state majors lấy từ API */}
+                      {majors.map(major => (
+                        <SelectItem key={major.id} value={major.majorCode}>
+                          {major.name} ({major.majorCode})
                         </SelectItem>
                       ))}
                     </SelectContent>

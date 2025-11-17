@@ -134,3 +134,11 @@ export interface LoginForm {
   username: string
   password: string
 }
+
+// ===== MAJOR TYPES =====
+export interface MajorItem {
+  id: string;
+  majorCode: string;
+  name: string;
+  description?: string;
+}
