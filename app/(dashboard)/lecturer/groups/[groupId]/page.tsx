@@ -22,6 +22,8 @@ import {
   BookOpen,
   UserPlus,
   Search,
+  AlertCircle,
+  X,
 } from "lucide-react";
 import { getCurrentUser } from "@/lib/utils/auth";
 import { useToast } from "@/lib/hooks/use-toast";
@@ -49,6 +51,15 @@ export default function GroupDetailPage() {
   const [studentSearch, setStudentSearch] = useState<string>("");
   const [selectedStudentId, setSelectedStudentId] = useState<string>("");
   const [openAddDialog, setOpenAddDialog] = useState<boolean>(false);
+  const [errorDialog, setErrorDialog] = useState<{
+    open: boolean;
+    title: string;
+    message: string;
+  }>({
+    open: false,
+    title: "",
+    message: "",
+  });
   const { toast } = useToast();
 
   useEffect(() => {
@@ -122,6 +133,25 @@ export default function GroupDetailPage() {
       return;
     }
 
+    // Kiểm tra giới hạn thành viên trước khi gọi API
+    if (group.maxMembers !== null && group.members.length >= group.maxMembers) {
+      const errorMsg = `Nhóm đã đạt số lượng thành viên tối đa.\n\nSố thành viên hiện tại: ${group.members.length} / ${group.maxMembers}`;
+
+      toast({
+        title: "Không thể thêm thành viên",
+        description: errorMsg,
+        variant: "destructive",
+      });
+
+      // Hiển thị error dialog
+      setErrorDialog({
+        open: true,
+        title: "Không thể thêm thành viên",
+        message: errorMsg,
+      });
+      return;
+    }
+
     try {
       setAddingMember(true);
       await GroupService.addMemberToGroupViaApi({
@@ -147,16 +177,52 @@ export default function GroupDetailPage() {
 
       setOpenAddDialog(false);
     } catch (error) {
-      console.error("Error adding member to group:", error);
-      const description =
+      // Xử lý lỗi đặc biệt cho trường hợp đạt giới hạn thành viên
+      const errorMessage =
         error instanceof Error && error.message
           ? error.message
           : "Không thể thêm sinh viên vào nhóm";
-      toast({
-        title: "Lỗi",
-        description,
-        variant: "destructive",
-      });
+
+      const isMaxMembersError =
+        errorMessage.includes("đạt số lượng thành viên tối đa") ||
+        errorMessage.includes("giới hạn thành viên") ||
+        errorMessage.includes("max members") ||
+        errorMessage.toLowerCase().includes("maximum") ||
+        errorMessage.toLowerCase().includes("limit");
+
+      if (isMaxMembersError) {
+        const maxMembersText = group.maxMembers
+          ? `\n\nSố thành viên hiện tại: ${group.members.length} / ${group.maxMembers}`
+          : "";
+
+        // Hiển thị toast
+        toast({
+          title: "Không thể thêm thành viên",
+          description: `Nhóm đã đạt số lượng thành viên tối đa.${maxMembersText}`,
+          variant: "destructive",
+        });
+
+        // Hiển thị error dialog để đảm bảo người dùng thấy lỗi
+        setErrorDialog({
+          open: true,
+          title: "Không thể thêm thành viên",
+          message: `Nhóm đã đạt số lượng thành viên tối đa.${maxMembersText}`,
+        });
+      } else {
+        // Hiển thị toast
+        toast({
+          title: "Lỗi",
+          description: errorMessage,
+          variant: "destructive",
+        });
+
+        // Hiển thị error dialog
+        setErrorDialog({
+          open: true,
+          title: "Lỗi khi thêm thành viên",
+          message: errorMessage,
+        });
+      }
     } finally {
       setAddingMember(false);
     }
@@ -420,6 +486,38 @@ export default function GroupDetailPage() {
               </Button>
               <Button onClick={handleAddMember} disabled={addingMember}>
                 {addingMember ? "Đang thêm..." : "Thêm vào nhóm"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Error Dialog */}
+        <Dialog
+          open={errorDialog.open}
+          onOpenChange={(open) => setErrorDialog({ ...errorDialog, open })}
+        >
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
+                  <AlertCircle className="w-6 h-6 text-red-600" />
+                </div>
+                <DialogTitle className="text-red-600">
+                  {errorDialog.title}
+                </DialogTitle>
+              </div>
+            </DialogHeader>
+            <div className="pt-4 px-6 pb-2">
+              <p className="text-gray-700 whitespace-pre-line text-sm">
+                {errorDialog.message}
+              </p>
+            </div>
+            <DialogFooter>
+              <Button
+                onClick={() => setErrorDialog({ ...errorDialog, open: false })}
+                className="bg-red-600 hover:bg-red-700"
+              >
+                Đã hiểu
               </Button>
             </DialogFooter>
           </DialogContent>

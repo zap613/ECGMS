@@ -16,15 +16,47 @@ export async function POST(request: NextRequest) {
     });
 
     if (!response.ok) {
-      const errorText = await response.text().catch(() => "");
-      console.error("GroupMember API Error:", response.status, errorText);
+      // Cố gắng parse JSON error từ backend
+      let errorMessage = "";
+      try {
+        const cloned = response.clone();
+        const errorJson: any = await cloned.json();
+        if (errorJson) {
+          if (typeof errorJson.message === "string") {
+            errorMessage = errorJson.message;
+          } else if (typeof errorJson.error === "string") {
+            errorMessage = errorJson.error;
+          } else if (typeof errorJson === "string") {
+            errorMessage = errorJson;
+          }
+        }
+      } catch {
+        // Nếu không parse được JSON, thử lấy text
+        try {
+          const errorText = await response.text();
+          if (errorText) {
+            errorMessage = errorText;
+          }
+        } catch {
+          // ignore
+        }
+      }
+
+      // Nếu không có message, dùng message mặc định
+      if (!errorMessage) {
+        if (response.status === 400) {
+          errorMessage = "Nhóm đã đạt số lượng thành viên tối đa";
+        } else {
+          errorMessage = `HTTP error when adding member to group: ${response.status}`;
+        }
+      }
+
+      console.error("GroupMember API Error:", response.status, errorMessage);
       return NextResponse.json(
         {
           error: "Failed to add member to group",
           status: response.status,
-          message:
-            errorText ||
-            `HTTP error when adding member to group: ${response.status}`,
+          message: errorMessage,
         },
         { status: response.status }
       );
@@ -43,5 +75,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-
-

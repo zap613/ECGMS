@@ -102,20 +102,32 @@ export class GroupService {
     });
 
     if (!response.ok) {
-      // Cố gắng parse JSON để lấy message thân thiện từ API route
+      // Cố gắng parse JSON error từ API route
+      let errorMessage = "";
       try {
-        const errorJson = await response.json();
-        if (errorJson && typeof errorJson.message === "string") {
-          throw new Error(errorJson.message);
+        const errorJson: any = await response.json();
+        if (errorJson) {
+          if (typeof errorJson.message === "string") {
+            errorMessage = errorJson.message;
+          } else if (typeof errorJson.error === "string") {
+            errorMessage = errorJson.error;
+          }
         }
-      } catch {
-        // Fallback sang text/raw message
-        const errorText = await response.text().catch(() => "");
-        throw new Error(
-          errorText ||
-            `Failed to add member to group. Status: ${response.status}`
-        );
+      } catch (parseError) {
+        // Nếu không parse được JSON, dùng message mặc định
+        console.warn("Could not parse error response:", parseError);
       }
+
+      // Nếu không có message từ API, dùng message mặc định dựa trên status code
+      if (!errorMessage) {
+        if (response.status === 400) {
+          errorMessage = "Nhóm đã đạt số lượng thành viên tối đa";
+        } else {
+          errorMessage = `Failed to add member to group. Status: ${response.status}`;
+        }
+      }
+
+      throw new Error(errorMessage);
     }
   }
 
