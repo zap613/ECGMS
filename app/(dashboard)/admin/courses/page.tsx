@@ -1,4 +1,3 @@
-// app/(dashboard)/admin/courses/page.tsx
 "use client"
 
 import * as React from "react"
@@ -29,9 +28,10 @@ import {
 import { CourseInitializationWizard } from "@/components/features/course/CourseInitializationWizard"
 import { CourseFormDialog } from "@/components/features/course/CourseFormDialog"
 
-// --- THAY ĐỔI QUAN TRỌNG ---
-// Sửa lại đường dẫn import, không cần chỉ định "/services"
-import { CoursesService, type Course } from "@/lib/api/generated"
+// --- SỬA LỖI TẠI ĐÂY ---
+// Import từ Adapter (lib/api/courseService), KHÔNG PHẢI generated
+import { CourseService } from "@/lib/api/courseService" 
+import type { Course } from "@/lib/types"
 
 export default function AdminCoursesPage() {
   const [courses, setCourses] = React.useState<Course[]>([]);
@@ -40,14 +40,16 @@ export default function AdminCoursesPage() {
   const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
   const [editingCourse, setEditingCourse] = React.useState<Course | null>(null);
 
+  // Fetch Courses
   React.useEffect(() => {
     const fetchCourses = async () => {
       setIsLoading(true);
       try {
-        const data = await CoursesService.getCourses();
+        // Gọi qua Adapter, hàm này đã map data đúng chuẩn Frontend
+        const data = await CourseService.getCourses();
         setCourses(data);
       } catch (error) {
-        console.error("Failed to fetch courses from backend:", error);
+        console.error("Failed to fetch courses:", error);
       } finally {
         setIsLoading(false);
       }
@@ -64,10 +66,11 @@ export default function AdminCoursesPage() {
   const handleDeleteCourse = async (courseId: string) => {
     if (confirm("Bạn có chắc chắn muốn xóa khóa học này không?")) {
       try {
-        await CoursesService.deleteCourse({ id: courseId });
+        await CourseService.deleteCourse(courseId);
         setCourses(courses.filter((c) => c.courseId !== courseId));
       } catch (error) {
         console.error("Failed to delete course:", error);
+        alert("Xóa thất bại. Vui lòng thử lại.");
       }
     }
   };
@@ -75,20 +78,24 @@ export default function AdminCoursesPage() {
   const handleUpdateCourse = async (courseData: Course) => {
      if (!editingCourse?.courseId) return;
     try {
-      // Giả sử API update trả về đối tượng đã cập nhật
-      const updatedCourse = await CoursesService.updateCourse({
-          id: editingCourse.courseId,
-          requestBody: courseData
-      });
+      const updatedCourse = await CourseService.updateCourse(
+          editingCourse.courseId,
+          courseData
+      );
+      
       setCourses(courses.map((c) => (c.courseId === updatedCourse.courseId ? updatedCourse : c)));
       setIsEditDialogOpen(false);
+      setEditingCourse(null);
     } catch (error) {
         console.error("Failed to update course:", error);
+        alert("Cập nhật thất bại.");
     }
   };
 
   const handleInitializationComplete = (newCourses: Course[]) => {
-    setCourses(prevCourses => [...prevCourses, ...newCourses]);
+    // Thêm khóa học mới vào danh sách (nếu Wizard trả về course đã tạo)
+    // Hoặc reload lại danh sách
+    setCourses(prev => [...prev, ...newCourses]);
   };
 
   if (isLoading) {
@@ -117,9 +124,9 @@ export default function AdminCoursesPage() {
 
         <Card>
            <CardHeader>
-             <CardTitle>Danh sách Lớp học</CardTitle>
+             <CardTitle>Danh sách Lớp học ({courses.length})</CardTitle>
              <CardDescription>
-               Tổng số {courses.length} lớp học đang hoạt động.
+               Quản lý các lớp học trong hệ thống.
              </CardDescription>
            </CardHeader>
            <CardContent>
@@ -128,42 +135,54 @@ export default function AdminCoursesPage() {
                  <TableRow>
                    <TableHead>Mã lớp</TableHead>
                    <TableHead>Tên lớp</TableHead>
-                   <TableHead>Học kỳ</TableHead>
-                   <TableHead>Năm</TableHead>
+                   <TableHead>Mô tả</TableHead>
+                   <TableHead>Ngày tạo</TableHead>
                    <TableHead className="text-right">Hành động</TableHead>
                  </TableRow>
                </TableHeader>
                <TableBody>
-                 {courses.map((course) => (
-                   <TableRow key={course.courseId}>
-                     <TableCell className="font-medium">{course.courseCode}</TableCell>
-                     <TableCell>{course.courseName}</TableCell>
-                     <TableCell>{course.semester}</TableCell>
-                     <TableCell>{course.year}</TableCell>
-                     <TableCell className="text-right">
-                       <DropdownMenu>
-                         <DropdownMenuTrigger asChild>
-                           <Button variant="ghost" size="icon">
-                             <MoreHorizontal className="h-4 w-4" />
-                           </Button>
-                         </DropdownMenuTrigger>
-                         <DropdownMenuContent align="end">
-                           <DropdownMenuItem onClick={() => handleEditCourse(course)}>
-                             <Edit className="mr-2 h-4 w-4" />
-                             Chỉnh sửa
-                           </DropdownMenuItem>
-                           <DropdownMenuItem
-                             className="text-destructive"
-                             onClick={() => handleDeleteCourse(course.courseId as string)}
-                           >
-                             <Trash2 className="mr-2 h-4 w-4" />
-                             Xóa
-                           </DropdownMenuItem>
-                         </DropdownMenuContent>
-                       </DropdownMenu>
+                 {courses.length > 0 ? (
+                   courses.map((course) => (
+                     <TableRow key={course.courseId}>
+                       <TableCell className="font-medium">{course.courseCode}</TableCell>
+                       <TableCell>{course.courseName}</TableCell>
+                       <TableCell className="max-w-xs truncate" title={course.description}>
+                          {course.description}
+                       </TableCell>
+                       <TableCell>
+                          {course.createdDate ? new Date(course.createdDate).toLocaleDateString('vi-VN') : 'N/A'}
+                       </TableCell>
+                       <TableCell className="text-right">
+                         <DropdownMenu>
+                           <DropdownMenuTrigger asChild>
+                             <Button variant="ghost" size="icon">
+                               <MoreHorizontal className="h-4 w-4" />
+                             </Button>
+                           </DropdownMenuTrigger>
+                           <DropdownMenuContent align="end">
+                             <DropdownMenuItem onClick={() => handleEditCourse(course)}>
+                               <Edit className="mr-2 h-4 w-4" />
+                               Chỉnh sửa
+                             </DropdownMenuItem>
+                             <DropdownMenuItem
+                               className="text-destructive"
+                               onClick={() => handleDeleteCourse(course.courseId)}
+                             >
+                               <Trash2 className="mr-2 h-4 w-4" />
+                               Xóa
+                             </DropdownMenuItem>
+                           </DropdownMenuContent>
+                         </DropdownMenu>
+                       </TableCell>
+                     </TableRow>
+                   ))
+                 ) : (
+                   <TableRow>
+                     <TableCell colSpan={5} className="text-center py-10 text-muted-foreground">
+                        Chưa có khóa học nào.
                      </TableCell>
                    </TableRow>
-                 ))}
+                 )}
                </TableBody>
              </Table>
            </CardContent>

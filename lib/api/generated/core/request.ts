@@ -216,7 +216,12 @@ export const sendRequest = async (
 
     onCancel(() => controller.abort());
 
-    return await fetch(url, request);
+    try {
+        return await fetch(url, request);
+    } catch (error) {
+        console.error("[SDK Fetch Error] Blocked by CORS or Network Error:", url);
+        throw error; // Ném lỗi tiếp để code bên ngoài xử lý, nhưng ít nhất ta biết url nào bị lỗi
+    }
 };
 
 export const getResponseHeader = (response: Response, responseHeader?: string): string | undefined => {

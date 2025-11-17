@@ -1,53 +1,112 @@
 // lib/api/courseService.ts
-// Course service - Replace mock data with actual API calls - Xử lý các thao tác liên quan đến Khóa học
+import {
+  CourseService as GeneratedCourseService,
+  OpenAPI,
+  type CourseViewModel,
+  type CreateCourseViewModel,
+  type UpdateCourseViewModel
+} from "@/lib/api/generated";
 import type { Course } from "@/lib/types";
-import { mockSummer2025Courses } from "@/lib/mock-data/summer2025-data";
 
-const API_BASE_URL = 'http://140.245.42.78:5050/api';
+const IS_MOCK_MODE = false;
+OpenAPI.BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://140.245.42.78:5050';
+
+// Helper: Map từ API Model sang Frontend Model
+const mapApiCourseToFeCourse = (c: CourseViewModel): Course => {
+  return {
+    courseId: c.id || "",
+    courseCode: c.courseCode || "",
+    courseName: c.courseName || "",
+    description: c.description || "",
+    semester: "N/A",
+    year: new Date().getFullYear(),
+    status: "open",
+    createdDate: c.createdAt || new Date().toISOString(),
+    lecturerId: "",
+    groupCount: 0,
+    studentCount: 0,
+  };
+};
 
 export class CourseService {
   // GET /api/Course
   static async getCourses(): Promise<Course[]> {
-    console.log(`[CourseService.getCourses] Fetching all courses`);
-    // TƯƠNG LAI: return fetch(`${API_BASE_URL}/Course`).then(res => res.json());
-    return Promise.resolve(mockSummer2025Courses);
+    try {
+      console.log("[CourseService] Fetching courses...");
+      // SỬA LỖI: Truyền object { pageNumber, pageSize } thay vì tham số rời rạc
+      const response = await GeneratedCourseService.getApiCourse({
+        pageNumber: 1,
+        pageSize: 1000
+      });
+      
+      const items = response.items || [];
+      return items.map(mapApiCourseToFeCourse);
+    } catch (error) {
+      console.error("Failed to fetch courses:", error);
+      return [];
+    }
   }
 
   // GET /api/Course/{id}
   static async getCourseById(id: string): Promise<Course | null> {
-    console.log(`[CourseService.getCourseById] Fetching course with id: ${id}`);
-    const course = mockSummer2025Courses.find(c => c.courseId === id) || null;
-    return Promise.resolve(course);
+    try {
+      // SỬA LỖI: Truyền object { id }
+      const course = await GeneratedCourseService.getApiCourse1({ id });
+      return mapApiCourseToFeCourse(course);
+    } catch (error) {
+      console.error(`Failed to fetch course ${id}:`, error);
+      return null;
+    }
   }
 
   // POST /api/Course
-  static async createCourse(courseData: Omit<Course, 'courseId'>): Promise<Course> {
-    console.log("[CourseService.createCourse] Creating course:", courseData);
-    const newCourse: Course = { ...courseData, courseId: `C${Date.now()}` };
-    mockSummer2025Courses.push(newCourse);
-    return Promise.resolve(newCourse);
+  static async createCourse(courseData: Partial<Course>): Promise<Course> {
+    try {
+      const requestBody: CreateCourseViewModel = {
+        courseCode: courseData.courseCode || "", // SỬA LỖI: Xử lý undefined
+        courseName: courseData.courseName || "", // SỬA LỖI: Xử lý undefined
+        description: courseData.description,
+      };
+      
+      // SỬA LỖI: Truyền object { requestBody }
+      const newCourse = await GeneratedCourseService.postApiCourse({ requestBody });
+      return mapApiCourseToFeCourse(newCourse);
+    } catch (error) {
+      console.error("Failed to create course:", error);
+      throw error;
+    }
   }
 
   // PUT /api/Course/{id}
   static async updateCourse(id: string, courseData: Partial<Course>): Promise<Course> {
-    console.log(`[CourseService.updateCourse] Updating course ${id}:`, courseData);
-    let updatedCourse: Course | null = null;
-    const index = mockSummer2025Courses.findIndex(c => c.courseId === id);
-    if (index !== -1) {
-      updatedCourse = { ...mockSummer2025Courses[index], ...courseData };
-      mockSummer2025Courses[index] = updatedCourse;
+    try {
+      const requestBody: UpdateCourseViewModel = {
+        courseCode: courseData.courseCode || "",
+        courseName: courseData.courseName || "",
+        description: courseData.description,
+      };
+
+      // SỬA LỖI: Truyền object { id, requestBody }
+      await GeneratedCourseService.putApiCourse({ id, requestBody });
+      
+      const updated = await this.getCourseById(id);
+      if (!updated) throw new Error("Failed to retrieve updated course");
+      
+      return updated;
+    } catch (error) {
+      console.error(`Failed to update course ${id}:`, error);
+      throw error;
     }
-    if (!updatedCourse) throw new Error("Course not found");
-    return Promise.resolve(updatedCourse);
   }
 
   // DELETE /api/Course/{id}
   static async deleteCourse(id: string): Promise<void> {
-    console.log(`[CourseService.deleteCourse] Deleting course: ${id}`);
-    const index = mockSummer2025Courses.findIndex(c => c.courseId === id);
-    if (index > -1) {
-      mockSummer2025Courses.splice(index, 1);
+    try {
+      // SỬA LỖI: Truyền object { id }
+      await GeneratedCourseService.deleteApiCourse({ id });
+    } catch (error) {
+      console.error(`Failed to delete course ${id}:`, error);
+      throw error;
     }
-    return Promise.resolve();
   }
 }
