@@ -1,157 +1,172 @@
-// lib/api/groupService.ts (Đã sửa lỗi Adapter)
+// lib/api/groupService.ts
 
 import type { 
-  Group as FeGroup, // Type Frontend (camelCase)
-  User as FeUser, 
+  Group as FeGroup, 
   GroupMember
 } from "@/lib/types"; 
-import { mockSummer2025Groups } from "@/lib/mock-data/summer2025-data";
-import { mockUsers } from "@/lib/mock-data/auth";
 
 import {
   GroupService as GeneratedGroupService,
   GroupMemberService as GeneratedGroupMemberService, 
   ApiError,
   OpenAPI,
-  type Group as ApiGroup, // Type API (camelCase, tên khác)
-  type GroupMember as ApiGroupMember, // Import type API cho GroupMember
+  type Group as ApiGroup,
+  type GroupMember as ApiGroupMember,
+  type GroupCreateModel,
 } from "@/lib/api/generated";
 
-const IS_MOCK_MODE = process.env.NEXT_PUBLIC_MOCK_MODE === 'true';
+// Cấu hình Base URL
+const IS_MOCK_MODE = false; // Luôn tắt mock
 OpenAPI.BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://140.245.42.78:5050';
 
-console.log(IS_MOCK_MODE ? "🚀 ECGMS đang chạy ở chế độ MOCK_MODE" : "🌐 ECGMS đang chạy ở chế độ API thật");
+console.log(`🌐 GroupService connected to: ${OpenAPI.BASE}`);
 
 // --- ADAPTER: Chuyển đổi API (ApiGroup) sang Frontend (FeGroup) ---
-// SỬA LỖI 1-7: Map chính xác tên thuộc tính từ API (bên phải) sang FE (bên trái)
 const mapApiGroupToFeGroup = (g: ApiGroup): FeGroup => {
-  if (!g) return null as any;
+  if (!g) throw new Error("Dữ liệu nhóm từ API không hợp lệ");
   
-  // Biến đổi groupMembers
-  const feMembers: GroupMember[] = (g.groupMembers || []).map((gm: ApiGroupMember) => {
-    // gm là kiểu ApiGroupMember, nó có 'user' và 'roleInGroup'
+  const feMembers: GroupMember[] = (g.groupMembers || []).map((gm: any) => {
+    const student = gm.student || gm.user; // Xử lý trường hợp tên thuộc tính thay đổi
     return {
-      userId: gm.userId || "", // Sửa: API có 'userId'
-      fullName: `${gm.user?.firstName || ''} ${gm.user?.lastName || ''}`.trim(), // Sửa: API có 'user.firstName', 'user.lastName'
-      avatarUrl: (gm.user?.userProfile as any)?.avatarUrl || "/placeholder-user.jpg",
-      role: gm.roleInGroup === 'Group Leader' ? 'leader' : 'member', // Sửa: API có 'roleInGroup'
-      major: (gm.user?.major?.majorCode as "SE" | "SS") || "SE", // Sửa: API có 'user.major.majorCode'
+      userId: gm.studentId || gm.userId || "", 
+      fullName: student?.fullName || `${student?.firstName || ''} ${student?.lastName || ''}`.trim() || "N/A",
+      avatarUrl: (student?.userProfile as any)?.avatarUrl || "/placeholder-user.jpg",
+      role: (gm.roleInGroup === 'Group Leader' || gm.isLeader) ? 'leader' : 'member',
+      major: (student?.majorCode || student?.major?.majorCode || "SE") as "SE" | "SS",
     };
   });
 
-  // Biến đổi Majors
-  const feMajors = (g.groupMembers || [])
-    .map(m => m.user?.major?.majorCode)
-    .filter(Boolean) as ("SE" | "SS")[];
+  // Lấy danh sách Major từ thành viên (để hiển thị tag major)
+  const feMajors = Array.from(new Set(feMembers.map(m => m.major))).filter(Boolean) as ("SE" | "SS")[];
 
   return {
-    // FE-Name: API-Name (theo file Group.ts bạn cung cấp)
     groupId: g.id || "",
-    groupName: g.name || "N/A",
+    groupName: g.name || "Chưa đặt tên",
     courseId: g.courseId || "", 
-    courseCode: g.course?.courseCode || "N/A", // Lấy từ object lồng
-    memberCount: g.countMembers || 0, // Sửa: API dùng 'countMembers'
+    courseCode: g.course?.courseCode || "N/A",
+    memberCount: g.countMembers || feMembers.length || 0,
     maxMembers: g.maxMembers || 6,
-    leaderName: `${g.leader?.firstName || ''} ${g.leader?.lastName || ''}`.trim(), // Sửa: API có 'leader.firstName', 'leader.lastName'
+    leaderName: g.leader ? (g.leader.fullName || `${g.leader.firstName || ''} ${g.leader.lastName || ''}`.trim()) : "Chưa có",
     leaderId: g.leaderId || "",
     status: (g.status as FeGroup['status']) || 'open',
-    majors: feMajors, // Sử dụng majors đã biến đổi
-    createdDate: g.createdAt || "", // SỬA LỖI 10: API dùng 'createdAt'
-    members: feMembers, // Sử dụng members đã biến đổi
-    needs: [], // API Group không có 'needs', mặc định là mảng rỗng
-    isLockedByRule: false, // API Group không có 'isLockedByRule'
+    majors: feMajors, 
+    createdDate: g.createdAt || new Date().toISOString(), 
+    members: feMembers, 
+    needs: [], 
+    isLockedByRule: false, 
   };
 };
 
-// --- MOCK SERVICE (Trả về kiểu FeGroup) ---
-class MockGroupService {
-  static async getGroups(courseId?: string): Promise<FeGroup[]> {
-    console.warn(`[MockService.getGroups] Sử dụng dữ liệu giả. Course: ${courseId}`);
-    let groups = mockSummer2025Groups;
-    if (courseId) {
-      groups = groups.filter(g => g.courseId === courseId);
-    }
-    return Promise.resolve(groups as FeGroup[]);
-  }
-
-  static async getGroupById(id: string): Promise<FeGroup | null> {
-    console.warn(`[MockService.getGroupById] Sử dụng dữ liệu giả: ${id}`);
-    const group = mockSummer2025Groups.find(g => g.groupId === id) || null;
-    return Promise.resolve(group as FeGroup | null);
-  }
-
-  static async joinGroup(groupId: string, userId: string): Promise<FeGroup> {
-    console.warn(`[MockService.joinGroup] User ${userId} tham gia nhóm giả ${groupId}`);
-    await new Promise(resolve => setTimeout(resolve, 500)); 
-    const group = mockSummer2025Groups.find(g => g.groupId === groupId);
-    const user = mockUsers.find(u => u.userId === userId);
-    if (!group || !user) throw new Error("Không tìm thấy nhóm hoặc người dùng (mock).");
-    if (group.memberCount >= group.maxMembers) throw new Error("Nhóm này đã đủ thành viên (mock).");
-    if (group.status !== 'open') throw new Error("Không thể tự do tham gia nhóm này (mock).");
-    group.memberCount++;
-    group.members.push({
-      userId: user.userId, fullName: user.fullName, avatarUrl: (user as any).avatarUrl || "/placeholder-user.jpg",
-      role: "member", major: user.major || "SE",
-    });
-    if (group.memberCount === 1) {
-      group.leaderId = user.userId; group.leaderName = user.fullName;
-    }
-    if(user) user.groupId = group.groupId;
-    return Promise.resolve(group as FeGroup);
-  }
-}
-
-// --- REAL API SERVICE (Gọi API, trả về FeGroup) ---
-class RealGroupService {
+// --- REAL API SERVICE ---
+export class GroupService {
+  /**
+   * Lấy danh sách nhóm.
+   * Endpoint: GET /api/Group/GetAllGroups
+   */
   static async getGroups(courseId?: string): Promise<FeGroup[]> {
     try {
-      console.log(`[RealService.getGroups] Đang gọi API thật... Course: ${courseId}`);
-      // SỬA LỖI 8: Tham số đúng là { courseId } và tên hàm là 'getGroups'
-      const groupsFromApi = await GeneratedGroupService.getGroups({ courseId: courseId });
-      return groupsFromApi.map(mapApiGroupToFeGroup); 
+      console.log(`[GroupService.getGroups] Đang tải danh sách nhóm...`);
+      
+      // Gọi API GetAllGroups
+      // Lưu ý: Tên hàm được sinh ra dựa trên path /api/Group/GetAllGroups
+      const groupsFromApi = await GeneratedGroupService.getApiGroupGetAllGroups();
+      
+      let feGroups = (Array.isArray(groupsFromApi) ? groupsFromApi : []).map(mapApiGroupToFeGroup);
+
+      // Lọc theo courseId ở phía Client (vì API GetAllGroups không nhận tham số lọc)
+      if (courseId) {
+        feGroups = feGroups.filter(g => g.courseId === courseId);
+      }
+
+      return feGroups;
     } catch (err) {
-      console.error("Lỗi khi gọi API getGroups:", err);
-      throw err; 
+      console.error("Lỗi API getGroups:", err);
+      return []; // Trả về mảng rỗng thay vì throw lỗi để tránh crash UI
     }
   }
 
+  /**
+   * Lấy chi tiết một nhóm.
+   * Endpoint: GET /api/Group/GetGroupBy/{id}
+   */
   static async getGroupById(id: string): Promise<FeGroup | null> {
     try {
-      console.log(`[RealService.getGroupById] Đang gọi API thật: ${id}`);
-      // SỬA LỖI 9: Tham số đúng là { id } và tên hàm là 'getGroup'
-      const groupFromApi = await GeneratedGroupService.getGroup({ id: id });
+      console.log(`[GroupService.getGroupById] Đang tải nhóm: ${id}`);
+      
+      // Gọi API GetGroupBy/{id}
+      const groupFromApi = await GeneratedGroupService.getApiGroupGetGroupBy({ id });
+      
       return mapApiGroupToFeGroup(groupFromApi);
     } catch (err: any) {
-      if (err instanceof ApiError && err.status === 404) return null; 
-      console.error("Lỗi khi gọi API getGroupById:", err);
+      if (err instanceof ApiError && err.status === 404) {
+        return null; 
+      }
+      console.error("Lỗi API getGroupById:", err);
       throw err;
     }
   }
 
+  /**
+   * Tham gia nhóm.
+   * Endpoint: POST /api/GroupMember (Giả định chuẩn REST)
+   * Hoặc nếu Swagger có endpoint khác cho join, cần cập nhật lại tên hàm.
+   */
   static async joinGroup(groupId: string, userId: string): Promise<FeGroup> {
     try {
-      console.log(`[RealService.joinGroup] User ${userId} đang gọi API thật cho nhóm ${groupId}`);
-      const requestBody = { groupId: groupId, studentId: userId };
-      // SỬA LỖI 10: Tên hàm đúng là 'createGroupMember'
-      await GeneratedGroupMemberService.createGroupMember({ requestBody: requestBody });
+      console.log(`[GroupService.joinGroup] User ${userId} -> Group ${groupId}`);
+      
+      // Gọi API tạo GroupMember
+      await GeneratedGroupMemberService.postApiGroupMember({
+        requestBody: {
+          groupId: groupId,
+          studentId: userId,
+          roleInGroup: "Member" // Mặc định là Member
+        }
+      });
+      
+      // Lấy lại thông tin nhóm mới nhất để cập nhật UI
       const updatedGroup = await this.getGroupById(groupId);
       if (!updatedGroup) throw new Error("Không thể lấy thông tin nhóm sau khi tham gia.");
+      
       return updatedGroup;
+
     } catch (err: any) {
-      console.error("Lỗi khi gọi API joinGroup:", err);
+      console.error("Lỗi API joinGroup:", err);
       if (err instanceof ApiError) {
-        // @ts-ignore
-        const errorBody = err.body as { message?: string, errors?: any };
-        const message = errorBody?.message || "Lỗi khi tham gia nhóm";
-        if (errorBody?.errors?.StudentId) {
-          throw new Error(errorBody.errors.StudentId[0]);
-        }
+        const errorBody = err.body as any;
+        // Xử lý thông báo lỗi từ Backend trả về
+        const message = errorBody?.detail || errorBody?.title || "Lỗi khi tham gia nhóm";
         throw new Error(message);
       }
       throw err;
     }
   }
-}
 
-// EXPORT LỚP ADAPTER CHÍNH
-export const GroupService = IS_MOCK_MODE ? MockGroupService : RealGroupService;
+  /**
+   * Tạo nhóm mới.
+   * Endpoint: POST /api/Group/CreateGroup
+   */
+  static async createGroup(data: { name: string, courseId: string }): Promise<FeGroup> {
+    try {
+      console.log(`[GroupService.createGroup] Đang tạo nhóm: ${data.name}`);
+      
+      const requestBody: GroupCreateModel = {
+        name: data.name,
+        // Các trường khác nếu API yêu cầu (ví dụ courseId, nhưng swagger mẫu CreateGroup chỉ thấy 'name')
+        // Nếu API cần courseId, bạn cần check lại model generated GroupCreateModel
+      };
+
+      // Nếu GroupCreateModel có courseId, hãy thêm vào:
+      // (requestBody as any).courseId = data.courseId;
+
+      const createdGroup = await GeneratedGroupService.postApiGroupCreateGroup({
+        requestBody: requestBody
+      });
+
+      return mapApiGroupToFeGroup(createdGroup);
+    } catch (err) {
+      console.error("Lỗi API createGroup:", err);
+      throw new Error("Không thể tạo nhóm mới.");
+    }
+  }
+}

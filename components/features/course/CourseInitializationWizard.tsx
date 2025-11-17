@@ -1,8 +1,7 @@
-// components/features/course/CourseInitializationWizard.tsx
 "use client"
 
 import * as React from "react"
-import { ArrowRight, CheckCircle, Loader2 } from "lucide-react" // Thêm icon Loader2
+import { ArrowRight, CheckCircle, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -36,10 +35,12 @@ export function CourseInitializationWizard({ isOpen, onClose, onComplete }: Wiza
   // State quản lý dữ liệu thực và trạng thái loading
   const [lecturers, setLecturers] = React.useState<any[]>([]);
   const [isLoading, setIsLoading] = React.useState(false);
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
 
-  // Fetch danh sách giảng viên từ API BFF khi mở Dialog
+  // Fetch danh sách giảng viên từ API Proxy khi mở Dialog
   React.useEffect(() => {
     const fetchLecturers = async () => {
+      setIsLoading(true);
       try {
         const response = await fetch('/api/users/lecturers');
         if (response.ok) {
@@ -50,6 +51,8 @@ export function CourseInitializationWizard({ isOpen, onClose, onComplete }: Wiza
         }
       } catch (error) {
         console.error("Lỗi kết nối:", error);
+      } finally {
+        setIsLoading(false);
       }
     };
 
@@ -104,7 +107,7 @@ export function CourseInitializationWizard({ isOpen, onClose, onComplete }: Wiza
       return;
     }
 
-    setIsLoading(true);
+    setIsSubmitting(true);
 
     // Logic tính toán phân bổ nhóm
     const studentsPerClass = Math.floor(numTotalStudents / numClassCount);
@@ -146,7 +149,7 @@ export function CourseInitializationWizard({ isOpen, onClose, onComplete }: Wiza
       console.error("Failed to initialize courses:", error);
       alert("Có lỗi xảy ra khi khởi tạo. Vui lòng thử lại.");
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -221,12 +224,12 @@ export function CourseInitializationWizard({ isOpen, onClose, onComplete }: Wiza
                     <Label>Giảng viên phụ trách</Label>
                     <Select onValueChange={(value) => handleCourseLecturerChange(index, value)} value={course.lecturerId}>
                       <SelectTrigger>
-                        <SelectValue placeholder="Chọn giảng viên" />
+                        <SelectValue placeholder={isLoading ? "Đang tải..." : "Chọn giảng viên"} />
                       </SelectTrigger>
                       <SelectContent>
                         {lecturers.map(lecturer => (
                           <SelectItem key={lecturer.userId || lecturer.id} value={lecturer.userId || lecturer.id}>
-                            {lecturer.fullName || lecturer.name}
+                            {lecturer.fullName || lecturer.name || lecturer.username}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -246,14 +249,14 @@ export function CourseInitializationWizard({ isOpen, onClose, onComplete }: Wiza
           )}
           {step === 2 && (
             <>
-              <Button variant="outline" onClick={() => setStep(1)} disabled={isLoading}>
+              <Button variant="outline" onClick={() => setStep(1)} disabled={isSubmitting}>
                 Quay lại
               </Button>
-              <Button onClick={handleFinalize} disabled={isLoading}>
-                {isLoading ? (
-                    <>Đang xử lý... <Loader2 className="w-4 h-4 ml-2 animate-spin" /></>
+              <Button onClick={handleFinalize} disabled={isSubmitting}>
+                {isSubmitting ? (
+                  <>Đang xử lý... <Loader2 className="w-4 h-4 ml-2 animate-spin" /></>
                 ) : (
-                    <>Hoàn tất & Tạo nhóm <CheckCircle className="w-4 h-4 ml-2" /></>
+                  <>Hoàn tất & Tạo nhóm <CheckCircle className="w-4 h-4 ml-2" /></>
                 )}
               </Button>
             </>
