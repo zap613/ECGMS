@@ -1,10 +1,8 @@
-//components\features\admin\ImportCard.tsx
 "use client"
 
 import * as React from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { UploadCloud, FileText, Loader2, CheckCircle, AlertCircle } from "lucide-react"
 
 type ImportStatus = "idle" | "uploading" | "success" | "error"
@@ -12,15 +10,23 @@ type ImportStatus = "idle" | "uploading" | "success" | "error"
 interface ImportCardProps {
   title: string
   description: string
-  // Hàm xử lý việc tải file (sẽ gọi API)
   onImport: (file: File) => Promise<any>
+  disabled?: boolean // Thêm prop này
 }
 
-export function ImportCard({ title, description, onImport }: ImportCardProps) {
+export function ImportCard({ title, description, onImport, disabled }: ImportCardProps) {
+  // ... (các state giữ nguyên)
   const [selectedFile, setSelectedFile] = React.useState<File | null>(null)
   const [status, setStatus] = React.useState<ImportStatus>("idle")
   const [message, setMessage] = React.useState("")
   const fileInputRef = React.useRef<HTMLInputElement>(null)
+
+  // Update status if parent disabled changes
+  React.useEffect(() => {
+      if (disabled && status !== 'uploading') {
+          // Optional: Handle disable state from parent if needed
+      }
+  }, [disabled, status]);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -32,7 +38,9 @@ export function ImportCard({ title, description, onImport }: ImportCardProps) {
   }
 
   const handleUploadClick = () => {
-    fileInputRef.current?.click()
+    if (!disabled && status !== 'uploading') {
+        fileInputRef.current?.click()
+    }
   }
 
   const handleImport = async () => {
@@ -60,7 +68,9 @@ export function ImportCard({ title, description, onImport }: ImportCardProps) {
       <CardContent className="space-y-4">
         {/* Vùng chọn file */}
         <div
-          className="border-2 border-dashed border-gray-300 rounded-lg p-6 flex flex-col items-center justify-center text-center cursor-pointer hover:border-gray-400 transition-colors"
+          className={`border-2 border-dashed border-gray-300 rounded-lg p-6 flex flex-col items-center justify-center text-center transition-colors ${
+            !disabled && status !== 'uploading' ? 'cursor-pointer hover:border-gray-400' : 'opacity-50 cursor-not-allowed'
+          }`}
           onClick={handleUploadClick}
         >
           <input
@@ -68,7 +78,8 @@ export function ImportCard({ title, description, onImport }: ImportCardProps) {
             ref={fileInputRef}
             onChange={handleFileChange}
             className="hidden"
-            accept=".xlsx, .xls, .csv" // Chỉ chấp nhận file Excel/CSV
+            accept=".xlsx, .xls, .csv"
+            disabled={disabled || status === 'uploading'}
           />
           {selectedFile ? (
             <div className="flex flex-col items-center gap-2 text-sm font-medium text-gray-700">
@@ -90,10 +101,10 @@ export function ImportCard({ title, description, onImport }: ImportCardProps) {
           <div className="flex items-center gap-4">
             <Button
               onClick={handleImport}
-              disabled={status === "uploading"}
+              disabled={disabled || status === "uploading"}
               className="w-full"
             >
-              {status === "uploading" && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              {(status === "uploading" || disabled) && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               {status === "uploading" ? "Đang xử lý..." : "Bắt đầu Nhập"}
             </Button>
           </div>
