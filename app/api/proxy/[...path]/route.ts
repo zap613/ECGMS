@@ -19,7 +19,7 @@ async function handleProxy(request: Request, { params }: { params: { path: strin
     // 4. Lấy Token từ Cookie (Server-side)
     // Lưu ý: cookies() trong Next.js mới trả về Promise nên cần await
     const cookieStore = await cookies();
-    const accessToken = cookieStore.get("accessToken")?.value;
+    const accessToken = cookieStore.get("auth_token")?.value ?? cookieStore.get("accessToken")?.value;
 
     // 5. Chuẩn bị Headers
     const headers: HeadersInit = {

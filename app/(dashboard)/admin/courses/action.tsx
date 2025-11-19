@@ -12,19 +12,18 @@ export async function getCoursesServerSide() {
   try {
     // 1. Lấy Token từ Cookie (HttpOnly)
     const cookieStore = await cookies();
-    const token = cookieStore.get('accessToken')?.value;
+    const token = cookieStore.get('auth_token')?.value ?? cookieStore.get('accessToken')?.value;
     
     // 2. Lấy URL Backend từ biến môi trường
     const backendUrl = process.env.BACKEND_URL || 'http://140.245.42.78:5050';
 
-    console.log(`[Server Action] Fetching courses from: ${backendUrl}/api/Course`);
+    console.log(`[Server Action] Fetching courses from: ${backendUrl}/api/Course/GetListCourses`);
 
     // 3. Gọi API Backend (Server-to-Server fetch)
-    const res = await fetch(`${backendUrl}/api/Course?PageNumber=1&PageSize=1000`, {
+    const res = await fetch(`${backendUrl}/api/Course/GetListCourses?PageNumber=1&PageSize=1000`, {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${token}`, // Đính kèm token
-        'Content-Type': 'application/json'
+        'Authorization': `Bearer ${token}`, // Đính kèm token nếu cần
       },
       cache: 'no-store' // Luôn lấy dữ liệu mới nhất
     });

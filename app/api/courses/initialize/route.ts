@@ -7,83 +7,41 @@ import type { CreateCourseViewModel } from "@/lib/api/generated/models/CreateCou
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
-    const { courses } = body; // Danh sách các lớp từ Frontend
-    
-    // Lấy Access Token từ Cookie
-    const cookieStore = await cookies(); 
-    const accessToken = cookieStore.get("accessToken")?.value || "";
+    const body = (await request.json()) as Partial<CreateCourseViewModel>;
+    const payload: CreateCourseViewModel = {
+      courseCode: body.courseCode ?? "",
+      courseName: body.courseName ?? "",
+      description: body.description ?? "",
+    };
 
-    const createdCourses = [];
-    const errors = [];
-
-    // Loop qua từng lớp để tạo
-    for (const course of courses) {
-      
-      // 1. Chuẩn bị Payload khớp 100% với CreateCourseViewModel
-      // ViewModel chỉ có: courseCode, courseName, description
-      const payload: CreateCourseViewModel = {
-        courseCode: course.courseCode,
-        courseName: course.courseName,
-        // Nhét các thông tin phụ vào description vì Model chưa hỗ trợ
-        description: course.description || `Semester: ${course.semester} - LecturerID: ${course.lecturerId}`,
-      };
-
-      // 2. Gọi Backend tạo Course
-      // Server-side gọi Server-side -> Không bị CORS -> Gọi thẳng URL Backend
-      const createCourseRes = await fetch(`${process.env.BACKEND_URL}/api/Course/CreateCourseByAdmin`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${accessToken}`, // Endpoint này yêu cầu Token Admin
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!createCourseRes.ok) {
-        // Đọc lỗi text an toàn
-        let errorText = "Unknown error";
-        try {
-             errorText = await createCourseRes.text();
-        } catch {}
-        
-        console.error(`Failed to create ${course.courseCode}:`, errorText);
-        errors.push(`Failed to create ${course.courseCode}: ${createCourseRes.statusText}`);
-        continue;
-      }
-
-      const newCourseData = await createCourseRes.json();
-      // const newCourseId = newCourseData.id; 
-
-      // 3. Logic tạo Nhóm Trống (Placeholder)
-      // const groupsToCreate = course.emptyGroupsToCreate || 0;
-      
-      // --- ĐOẠN NÀY CẦN API TẠO NHÓM CỦA BACKEND ---
-      // Hiện tại comment lại vì chưa có API Bulk Create hoặc CreateGroup chuẩn
-      /*
-      for (let i = 1; i <= groupsToCreate; i++) {
-         await fetch(`${process.env.BACKEND_URL}/api/Group`, {
-             method: 'POST',
-             headers: { 
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${accessToken}`
-             },
-             body: JSON.stringify({ 
-                 name: `${course.courseCode}-G${i}`, 
-                 courseId: newCourseId 
-             })
-         });
-      }
-      */
-
-      createdCourses.push(newCourseData);
+    if (!payload.courseCode || !payload.courseName) {
+      return NextResponse.json({ error: "Missing courseCode or courseName" }, { status: 400 });
     }
 
-    return NextResponse.json({ 
-        success: true, 
-        created: createdCourses, 
-        errors: errors 
+    // Lấy Access Token từ Cookie (ưu tiên 'auth_token', fallback 'accessToken')
+    const cookieStore = await cookies(); 
+    const accessToken = cookieStore.get("auth_token")?.value 
+      ?? cookieStore.get("accessToken")?.value 
+      ?? "";
+
+    const createCourseRes = await fetch(`${process.env.BACKEND_URL}/api/Course/CreateCourseByAdmin`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(accessToken ? { "Authorization": `Bearer ${accessToken}` } : {}),
+      },
+      body: JSON.stringify(payload),
     });
+
+    // Trả về nguyên dữ liệu từ server nếu thành công
+    if (createCourseRes.ok) {
+      const created = await createCourseRes.json();
+      return NextResponse.json(created, { status: 201 });
+    }
+
+    // Nếu lỗi, trả về text để hiển thị
+    const errorText = await createCourseRes.text().catch(() => createCourseRes.statusText);
+    return NextResponse.json({ error: errorText }, { status: createCourseRes.status || 500 });
 
   } catch (error) {
     console.error("[Initialization Error]", error);

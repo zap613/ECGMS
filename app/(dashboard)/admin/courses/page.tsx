@@ -145,7 +145,7 @@ export default function AdminCoursesPage() {
                <TableBody>
                  {courses.length > 0 ? (
                    courses.map((course) => (
-                     <TableRow key={course.courseId}>
+                     <TableRow key={course.courseId ?? (course as any).id ?? `${course.courseCode}-${course.courseName}` }>
                        <TableCell className="font-medium">{course.courseCode}</TableCell>
                        <TableCell>{course.courseName}</TableCell>
                        <TableCell className="max-w-xs truncate" title={course.description}>
