@@ -1,7 +1,8 @@
+// app/api/courses/initialize/route.ts
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers"; // Cần để lấy token nếu dùng cookie
+import { cookies } from "next/headers"; // Cần để lấy token
 
-// Import type để đảm bảo type safety (nếu path đúng)
+// Import type để đảm bảo type safety
 import type { CreateCourseViewModel } from "@/lib/api/generated/models/CreateCourseViewModel";
 
 export async function POST(request: Request) {
@@ -9,7 +10,7 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { courses } = body; // Danh sách các lớp từ Frontend
     
-    // Lấy Access Token (Tuỳ theo cách bạn lưu token, ví dụ lấy từ cookie)
+    // Lấy Access Token từ Cookie
     const cookieStore = await cookies(); 
     const accessToken = cookieStore.get("accessToken")?.value || "";
 
@@ -20,41 +21,48 @@ export async function POST(request: Request) {
     for (const course of courses) {
       
       // 1. Chuẩn bị Payload khớp 100% với CreateCourseViewModel
+      // ViewModel chỉ có: courseCode, courseName, description
       const payload: CreateCourseViewModel = {
         courseCode: course.courseCode,
         courseName: course.courseName,
-        description: course.description || `Semester: ${course.semester}`,
+        // Nhét các thông tin phụ vào description vì Model chưa hỗ trợ
+        description: course.description || `Semester: ${course.semester} - LecturerID: ${course.lecturerId}`,
       };
 
       // 2. Gọi Backend tạo Course
-      // Endpoint chuẩn: POST /api/Course
+      // Server-side gọi Server-side -> Không bị CORS -> Gọi thẳng URL Backend
       const createCourseRes = await fetch(`${process.env.BACKEND_URL}/api/Course/CreateCourseByAdmin`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${accessToken}`, // Endpoint này chắc chắn yêu cầu Token Admin
+          "Authorization": `Bearer ${accessToken}`, // Endpoint này yêu cầu Token Admin
         },
         body: JSON.stringify(payload),
       });
 
       if (!createCourseRes.ok) {
-        const errorText = await createCourseRes.text();
+        // Đọc lỗi text an toàn
+        let errorText = "Unknown error";
+        try {
+             errorText = await createCourseRes.text();
+        } catch {}
+        
         console.error(`Failed to create ${course.courseCode}:`, errorText);
         errors.push(`Failed to create ${course.courseCode}: ${createCourseRes.statusText}`);
         continue;
       }
 
       const newCourseData = await createCourseRes.json();
-      const newCourseId = newCourseData.id; 
+      // const newCourseId = newCourseData.id; 
 
       // 3. Logic tạo Nhóm Trống (Placeholder)
-      const groupsToCreate = course.emptyGroupsToCreate || 0;
+      // const groupsToCreate = course.emptyGroupsToCreate || 0;
       
       // --- ĐOẠN NÀY CẦN API TẠO NHÓM CỦA BACKEND ---
       // Hiện tại comment lại vì chưa có API Bulk Create hoặc CreateGroup chuẩn
       /*
       for (let i = 1; i <= groupsToCreate; i++) {
-         await fetch(`${process.env.BACKEND_URL}/api/Group`, { // Check lại endpoint Group
+         await fetch(`${process.env.BACKEND_URL}/api/Group`, {
              method: 'POST',
              headers: { 
                 "Content-Type": "application/json",

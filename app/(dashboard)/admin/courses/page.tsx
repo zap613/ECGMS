@@ -1,3 +1,4 @@
+// app/%28dashboard%29/admin/courses/page.tsx
 "use client"
 
 import * as React from "react"
@@ -32,6 +33,7 @@ import { CourseFormDialog } from "@/components/features/course/CourseFormDialog"
 // Import từ Adapter (lib/api/courseService), KHÔNG PHẢI generated
 import { CourseService } from "@/lib/api/courseService" 
 import type { Course } from "@/lib/types"
+import { getCoursesServerSide } from '@/app/(dashboard)/admin/courses/action';
 
 export default function AdminCoursesPage() {
   const [courses, setCourses] = React.useState<Course[]>([]);
@@ -46,7 +48,7 @@ export default function AdminCoursesPage() {
       setIsLoading(true);
       try {
         // Gọi qua Adapter, hàm này đã map data đúng chuẩn Frontend
-        const data = await CourseService.getCourses();
+        const data = await getCoursesServerSide();
         setCourses(data);
       } catch (error) {
         console.error("Failed to fetch courses:", error);

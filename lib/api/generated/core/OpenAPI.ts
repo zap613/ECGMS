@@ -1,7 +1,5 @@
-/* generated using openapi-typescript-codegen -- do not edit */
-/* istanbul ignore file */
-/* tslint:disable */
-/* eslint-disable */
+// lib/api/generated/core/OpenAPI.ts
+
 import type { ApiRequestOptions } from './ApiRequestOptions';
 
 type Resolver<T> = (options: ApiRequestOptions) => Promise<T>;
@@ -19,8 +17,9 @@ export type OpenAPIConfig = {
     ENCODE_PATH?: ((path: string) => string) | undefined;
 };
 
+// ✅ FIX CORS: Force BASE luôn là /api/proxy
 export const OpenAPI: OpenAPIConfig = {
-    BASE: '',
+    BASE: '/api/proxy',
     VERSION: '1.0',
     WITH_CREDENTIALS: false,
     CREDENTIALS: 'include',

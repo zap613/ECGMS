@@ -1,29 +1,39 @@
 // app/layout.tsx
-import type { Metadata } from 'next'
-import { GeistSans } from 'geist/font/sans'
-import { GeistMono } from 'geist/font/mono'
-import { Analytics } from '@vercel/analytics/next'
-import './globals.css'
-import { ApiProvider } from '@/components/ApiProvider' // <-- Import component mới
+import type { Metadata } from "next";
+import { Inter } from "next/font/google";
+import "./globals.css";
+import { ThemeProvider } from "@/components/theme-provider";
+import { Toaster } from "@/components/ui/toaster";
+import { ApiProvider } from "@/components/ApiProvider"; // Import ApiProvider
+
+const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: 'ECGMS App',
-  description: 'Created with Next.js',
-}
+  title: "ECGMS - Course Grouping Management",
+  description: "Hệ thống quản lý phân nhóm môn học EXE",
+};
 
 export default function RootLayout({
   children,
 }: Readonly<{
-  children: React.ReactNode
+  children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className={`font-sans ${GeistSans.variable} ${GeistMono.variable}`}>
-        <ApiProvider>  {/* <-- Bọc children bằng ApiProvider */}
-          {children}
-        </ApiProvider>
-        <Analytics />
+    <html lang="en" suppressHydrationWarning>
+      <body className={inter.className}>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          {/* ✅ Bọc ApiProvider ở ngoài cùng */}
+          <ApiProvider>
+            {children}
+          </ApiProvider>
+          <Toaster />
+        </ThemeProvider>
       </body>
     </html>
-  )
+  );
 }

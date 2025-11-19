@@ -4,4 +4,5 @@ module.exports = {
   output: './lib/api/generated',
   httpClient: 'fetch',
   exportSchemas: true,
+  baseUrl: "/api/proxy",
 };
