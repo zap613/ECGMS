@@ -91,7 +91,7 @@ export default function AdminDataManagementPage() {
   }, [searchTerm, selectedMajor, selectedSkill]);
 
   // --- Handlers ---
-  const handleUpload = async (file: File, type: "student" | "lecturer") => {
+  const handleUpload = async (file: File, type: "student") => {
     const allowedExtensions = [".xlsx", ".xls", ".csv"];
     const isValid = allowedExtensions.some(ext => file.name.toLowerCase().endsWith(ext));
     if (!isValid) throw new Error("Invalid file. Upload Excel/CSV only.");
@@ -113,11 +113,8 @@ export default function AdminDataManagementPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        // Lấy thông điệp lỗi từ API (đã được format tiếng Việt)
         const msg = data.error || "Import failed";
-        // Hiển thị Toast lỗi
         toast.error(msg);
-        // Ném lỗi để ImportCard hiển thị trạng thái error
         throw new Error(msg);
       }
 
@@ -134,7 +131,7 @@ export default function AdminDataManagementPage() {
   };
 
   const handleImportStudents = (file: File) => handleUpload(file, "student");
-  const handleImportLecturers = (file: File) => handleUpload(file, "lecturer");
+  // Đã xóa handleImportLecturers
 
   // --- Helper Getters ---
   const getUsername = (s: Student) => s.username || "N/A";
@@ -244,21 +241,15 @@ export default function AdminDataManagementPage() {
       <div className="space-y-8">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Data Management</h1>
-          <p className="text-gray-600 mt-1">Import student and lecturer data.</p>
+          <p className="text-gray-600 mt-1">Import student data and view lists.</p>
         </div>
 
-        {/* Import Section */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Import Section - Đã xóa Lecturer Import */}
+        <div className="grid grid-cols-1 gap-6">
           <ImportCard 
             title="Import Students" 
             description="Upload student list (.xlsx/.csv) — Cột: User Name, Full Name, Email, Student Code, SkillSet"
             onImport={handleImportStudents} 
-            disabled={isUploading} 
-          />
-          <ImportCard 
-            title="Import Lecturers" 
-            description="Upload lecturer list (.xlsx/.csv)"
-            onImport={handleImportLecturers} 
             disabled={isUploading} 
           />
         </div>

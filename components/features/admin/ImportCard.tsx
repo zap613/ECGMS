@@ -1,4 +1,4 @@
-//components/features/admin/ImportCard.tsx
+// components/features/admin/ImportCard.tsx
 "use client"
 
 import * as React from "react"
@@ -12,11 +12,10 @@ interface ImportCardProps {
   title: string
   description: string
   onImport: (file: File) => Promise<any>
-  disabled?: boolean // Thêm prop này
+  disabled?: boolean
 }
 
 export function ImportCard({ title, description, onImport, disabled }: ImportCardProps) {
-  // ... (các state giữ nguyên)
   const [selectedFile, setSelectedFile] = React.useState<File | null>(null)
   const [status, setStatus] = React.useState<ImportStatus>("idle")
   const [message, setMessage] = React.useState("")
@@ -25,7 +24,7 @@ export function ImportCard({ title, description, onImport, disabled }: ImportCar
   // Update status if parent disabled changes
   React.useEffect(() => {
       if (disabled && status !== 'uploading') {
-          // Optional: Handle disable state from parent if needed
+          // Optional logic
       }
   }, [disabled, status]);
 
@@ -56,6 +55,8 @@ export function ImportCard({ title, description, onImport, disabled }: ImportCar
       setMessage(result.message || "Nhập dữ liệu thành công!")
     } catch (error: any) {
       setStatus("error")
+      // Thông báo lỗi đã được set từ component cha qua prop onImport nếu throw error,
+      // nhưng ở đây ta set lại để hiển thị trong card
       setMessage(error.message || "Đã xảy ra lỗi khi nhập file.")
     }
   }
