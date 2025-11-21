@@ -1,3 +1,4 @@
+// components/features/course/CourseInitializationWizard.tsx
 "use client"
 
 import * as React from "react"
@@ -89,16 +90,16 @@ export function CourseInitializationWizard({ isOpen, onClose, onComplete }: Wiza
 
         <div className="space-y-4 py-2">
           <div>
-            <Label htmlFor="courseCode">Mã lớp</Label>
-            <Input id="courseCode" value={courseCode} onChange={(e) => setCourseCode(e.target.value)} placeholder="VD: EXE101_Summer2025_C1" />
+            <Label htmlFor="courseCode">Course Code</Label>
+            <Input id="courseCode" value={courseCode} onChange={(e) => setCourseCode(e.target.value)} placeholder="e.g., EXE101_Summer2025_C1" />
           </div>
           <div>
-            <Label htmlFor="courseName">Tên lớp</Label>
-            <Input id="courseName" value={courseName} onChange={(e) => setCourseName(e.target.value)} placeholder="VD: EXE101 Summer 2025 - Class 1" />
+            <Label htmlFor="courseName">Course Name</Label>
+            <Input id="courseName" value={courseName} onChange={(e) => setCourseName(e.target.value)} placeholder="e.g., EXE101 Summer 2025 - Class 1" />
           </div>
           <div>
-            <Label htmlFor="description">Mô tả</Label>
-            <Input id="description" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Mô tả (tùy chọn)" />
+            <Label htmlFor="description">Description</Label>
+            <Input id="description" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Optional description" />
           </div>
         </div>
 

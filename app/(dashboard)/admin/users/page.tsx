@@ -248,7 +248,7 @@ export default function AdminDataManagementPage() {
         <div className="grid grid-cols-1 gap-6">
           <ImportCard 
             title="Import Students" 
-            description="Upload student list (.xlsx/.csv) — Cột: User Name, Full Name, Email, Student Code, SkillSet"
+            description="Upload student list (.xlsx/.csv)"
             onImport={handleImportStudents} 
             disabled={isUploading} 
           />
@@ -265,7 +265,7 @@ export default function AdminDataManagementPage() {
                 <User className="w-5 h-5" /> 
                 Student List 
                 <span className="ml-1 text-sm font-normal text-gray-500">
-                   ({sortedStudents.length} records)
+                   ({sortedStudents.length} students)
                 </span>
               </CardTitle>
 
@@ -291,26 +291,11 @@ export default function AdminDataManagementPage() {
                         className="pl-9"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        placeholder="Search: username, name, email, code..."
+                        placeholder="Search: User Name, Full Name, Email, Student Code, SkillSet"
                     />
                 </div>
 
-                <div className="md:col-span-3">
-                    <Select value={selectedMajor} onValueChange={setSelectedMajor}>
-                        <SelectTrigger>
-                            <div className="flex items-center gap-2 truncate">
-                                <Filter className="h-4 w-4 text-gray-500" />
-                                <SelectValue placeholder="Filter Major" />
-                            </div>
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">All Majors</SelectItem>
-                            {majorOptions.map((m) => (
-                                <SelectItem key={m} value={m}>{m}</SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                </div>
+                
 
                 <div className="md:col-span-3">
                     <Select value={selectedSkill} onValueChange={setSelectedSkill}>
@@ -391,7 +376,7 @@ export default function AdminDataManagementPage() {
 
                 <div className="flex items-center justify-between p-4 border-t bg-gray-50/50">
                   <div className="text-sm text-gray-500">
-                    Showing <span className="font-medium text-gray-900">{(currentPage - 1) * pageSize + 1}</span> to <span className="font-medium text-gray-900">{Math.min(currentPage * pageSize, sortedStudents.length)}</span> of <span className="font-medium text-gray-900">{sortedStudents.length}</span> entries
+                    Showing <span className="font-medium text-gray-900">{(currentPage - 1) * pageSize + 1}</span> to <span className="font-medium text-gray-900">{Math.min(currentPage * pageSize, sortedStudents.length)}</span> of <span className="font-medium text-gray-900">{sortedStudents.length}</span> students
                   </div>
                   <div className="flex gap-2">
                     <Button 

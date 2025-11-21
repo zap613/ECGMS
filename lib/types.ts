@@ -22,14 +22,13 @@ export interface Course {
   semester: string
   year?: number 
   lecturerId?: string 
-
-  // SỬA LỖI 8, 9: Thêm các thuộc tính này để khớp với mock data
   description?: string
   status?: "open" | "pending" | "closed" | string 
   groupCount?: number
   studentCount?: number
   lecturerCount?: number
   createdDate?: string // SỬA LỖI 8, 9
+  updatedDate?: string
 }
 
 // SỬA LỖI 10, 11: Định nghĩa GroupNeeds và GroupMember TRƯỚC Group

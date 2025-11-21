@@ -10,7 +10,14 @@ import type { Course } from "@/lib/types";
 
 const IS_MOCK_MODE = false;
 OpenAPI.BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://140.245.42.78:5050';
-
+OpenAPI.TOKEN = async () => {
+  // Lấy token từ cookie hoặc localStorage
+  const token = document.cookie
+    .split('; ')
+    .find(row => row.startsWith('AuthToken='))
+    ?.split('=')[1];
+  return token || '';
+};
 // Helper: Map từ API Model sang Frontend Model
 const mapApiCourseToFeCourse = (c: CourseViewModel): Course => {
   return {
@@ -22,9 +29,10 @@ const mapApiCourseToFeCourse = (c: CourseViewModel): Course => {
     year: new Date().getFullYear(),
     status: "open",
     createdDate: c.createdAt || new Date().toISOString(),
+    updatedDate: (c as any).updatedAt || c.createdAt || new Date().toISOString(),
     lecturerId: "",
     groupCount: 0,
-    studentCount: 0,
+    studentCount: Array.isArray((c as any).studentCourses) ? (c as any).studentCourses.length : ((c as any).studentCount ?? 0),
   };
 };
 

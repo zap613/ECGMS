@@ -5,6 +5,9 @@ import * as React from "react"
 import { PlusCircle, MoreHorizontal, Trash2, Edit, Loader2 } from "lucide-react"
 import { DashboardLayout } from "@/components/layouts/dashboard-layout"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import {
   Card,
   CardContent,
@@ -41,6 +44,7 @@ export default function AdminCoursesPage() {
   const [isWizardOpen, setIsWizardOpen] = React.useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
   const [editingCourse, setEditingCourse] = React.useState<Course | null>(null);
+  // Đã loại bỏ form "Tạo Khóa học mới" theo yêu cầu
 
   // Fetch Courses
   React.useEffect(() => {
@@ -94,6 +98,8 @@ export default function AdminCoursesPage() {
     }
   };
 
+  // Đã loại bỏ hàm tạo course trực tiếp - sử dụng Wizard để khởi tạo
+
   const handleInitializationComplete = (newCourses: Course[]) => {
     // Thêm khóa học mới vào danh sách (nếu Wizard trả về course đã tạo)
     // Hoặc reload lại danh sách
@@ -126,21 +132,19 @@ export default function AdminCoursesPage() {
 
         <Card>
            <CardHeader>
-             <CardTitle>Danh sách Lớp học ({courses.length})</CardTitle>
-             <CardDescription>
-               Quản lý các lớp học trong hệ thống.
-             </CardDescription>
+             <CardTitle>Course List ({courses.length})</CardTitle>
+             <CardDescription>Course Code | Course Name | Description | Created Date</CardDescription>
            </CardHeader>
            <CardContent>
              <Table>
                <TableHeader>
-                 <TableRow>
-                   <TableHead>Mã lớp</TableHead>
-                   <TableHead>Tên lớp</TableHead>
-                   <TableHead>Mô tả</TableHead>
-                   <TableHead>Ngày tạo</TableHead>
-                   <TableHead className="text-right">Hành động</TableHead>
-                 </TableRow>
+                  <TableRow>
+                   <TableHead>Course Code</TableHead>
+                   <TableHead>Course Name</TableHead>
+                   <TableHead>Description</TableHead>
+                   <TableHead>Created Date</TableHead>
+                   <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
                </TableHeader>
                <TableBody>
                  {courses.length > 0 ? (
@@ -148,40 +152,43 @@ export default function AdminCoursesPage() {
                      <TableRow key={course.courseId ?? (course as any).id ?? `${course.courseCode}-${course.courseName}` }>
                        <TableCell className="font-medium">{course.courseCode}</TableCell>
                        <TableCell>{course.courseName}</TableCell>
-                       <TableCell className="max-w-xs truncate" title={course.description}>
-                          {course.description}
-                       </TableCell>
-                       <TableCell>
-                          {course.createdDate ? new Date(course.createdDate).toLocaleDateString('vi-VN') : 'N/A'}
-                       </TableCell>
-                       <TableCell className="text-right">
-                         <DropdownMenu>
-                           <DropdownMenuTrigger asChild>
-                             <Button variant="ghost" size="icon">
-                               <MoreHorizontal className="h-4 w-4" />
-                             </Button>
-                           </DropdownMenuTrigger>
-                           <DropdownMenuContent align="end">
-                             <DropdownMenuItem onClick={() => handleEditCourse(course)}>
-                               <Edit className="mr-2 h-4 w-4" />
-                               Chỉnh sửa
-                             </DropdownMenuItem>
-                             <DropdownMenuItem
-                               className="text-destructive"
-                               onClick={() => handleDeleteCourse(course.courseId)}
-                             >
-                               <Trash2 className="mr-2 h-4 w-4" />
-                               Xóa
-                             </DropdownMenuItem>
-                           </DropdownMenuContent>
-                         </DropdownMenu>
-                       </TableCell>
+                        <TableCell className="max-w-xs truncate" title={course.description}>
+                           {course.description}
+                        </TableCell>
+                        <TableCell>
+                          {(() => {
+                            const v = (course as any).createdAt ?? (course as any).createdDate ?? course.createdDate;
+                            return v ? formatDate(v) : 'N/A';
+                          })()}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => handleEditCourse(course)}>
+                                <Edit className="mr-2 h-4 w-4" />
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                className="text-destructive"
+                                onClick={() => handleDeleteCourse(course.courseId)}
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
                      </TableRow>
                    ))
                  ) : (
                    <TableRow>
                      <TableCell colSpan={5} className="text-center py-10 text-muted-foreground">
-                        Chưa có khóa học nào.
+                       No courses yet.
                      </TableCell>
                    </TableRow>
                  )}
@@ -207,4 +214,15 @@ export default function AdminCoursesPage() {
       )}
     </DashboardLayout>
   )
+}
+
+// Helper format date to vi-VN safely
+function formatDate(value: string) {
+  try {
+    const d = new Date(value);
+    if (isNaN(d.getTime())) return value;
+    return d.toLocaleDateString('vi-VN');
+  } catch {
+    return value;
+  }
 }

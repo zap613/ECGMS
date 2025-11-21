@@ -59,7 +59,7 @@ export function StudentImportGuide() {
         </div>
         <div className="flex items-center justify-between">
           <p className="text-sm text-gray-600">
-            Bạn có thể tải mẫu CSV bên dưới, hoặc sử dụng Excel với các cột tương tự.
+            Tải mẫu CSV bên dưới, hoặc sử dụng Excel với các cột tương tự.
           </p>
           <Button variant="outline" onClick={handleDownloadTemplate}>Tải mẫu CSV</Button>
         </div>
