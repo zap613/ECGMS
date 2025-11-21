@@ -72,8 +72,17 @@ export default function AdminCoursesPage() {
   const handleDeleteCourse = async (courseId: string) => {
     if (confirm("Bạn có chắc chắn muốn xóa khóa học này không?")) {
       try {
+        // Xóa lạc quan ngay trên UI
+        setCourses(prev => prev.filter(c => c.courseId !== courseId));
+
+        // Gọi delete tới BE qua proxy
         await CourseService.deleteCourse(courseId);
-        setCourses(courses.filter((c) => c.courseId !== courseId));
+
+        // Refetch từ server để đảm bảo đồng bộ với BE
+        const refreshed = await getCoursesServerSide();
+        // Nếu BE vẫn trả về item vừa xóa (soft delete/chưa xóa), tiếp tục che item trên UI
+        const filtered = refreshed.filter(c => c.courseId !== courseId);
+        setCourses(filtered);
       } catch (error) {
         console.error("Failed to delete course:", error);
         alert("Xóa thất bại. Vui lòng thử lại.");
@@ -133,7 +142,6 @@ export default function AdminCoursesPage() {
         <Card>
            <CardHeader>
              <CardTitle>Course List ({courses.length})</CardTitle>
-             <CardDescription>Course Code | Course Name | Description | Created Date</CardDescription>
            </CardHeader>
            <CardContent>
              <Table>

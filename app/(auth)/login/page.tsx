@@ -1,4 +1,3 @@
-// app/(auth)/login/page.tsx
 "use client"
 
 import type React from "react"
@@ -29,7 +28,17 @@ export default function LoginPage() {
     if (user) {
       // Store user data in localStorage (will be replaced with proper auth later)
       localStorage.setItem("currentUser", JSON.stringify(user))
-      console.log("User stored in localStorage")
+      // Mock token for demo auth flow; ensure server routes can read it
+      const token = `mock-jwt-token-for-${user.username}`
+      try {
+        localStorage.setItem("token", token)
+        // Set cookie so server-side API routes can authenticate
+        document.cookie = `auth_token=${token}; Path=/; SameSite=Lax`
+        // Optional compatibility cookie name
+        document.cookie = `AuthToken=${token}; Path=/; SameSite=Lax`
+      } catch (err) {
+        console.warn("Failed to persist token", err)
+      }
 
       // Redirect based on role
       switch (user.role) {

@@ -9,7 +9,8 @@ import {
 import type { Course } from "@/lib/types";
 
 const IS_MOCK_MODE = false;
-OpenAPI.BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://140.245.42.78:5050';
+// Đưa tất cả gọi của generated client qua BFF Proxy để tránh CORS và chuẩn hóa auth
+OpenAPI.BASE = '/api/proxy';
 OpenAPI.TOKEN = async () => {
   // Lấy token từ cookie hoặc localStorage
   const token = document.cookie
@@ -40,13 +41,22 @@ export class CourseService {
   // GET /api/Course
   static async getCourses(): Promise<Course[]> {
     try {
-      console.log("[CourseService] Fetching courses...");
-      // SỬA LỖI: Truyền object { pageNumber, pageSize } thay vì tham số rời rạc
-      const response = await GeneratedCourseService.getApiCourse({
-        pageNumber: 1,
-        pageSize: 1000
+      console.log("[CourseService] Fetching courses via proxy...");
+      const ts = Date.now();
+      const res = await fetch(`/api/proxy/Course/GetListCourses?PageNumber=1&PageSize=1000&_t=${ts}` , {
+        cache: 'no-store',
+        next: { revalidate: 0 },
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0',
+        },
       });
-      
+      if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        throw new Error(`List failed: ${res.status} ${res.statusText} ${text}`);
+      }
+      const response = await res.json();
       const items = response.items || [];
       return items.map(mapApiCourseToFeCourse);
     } catch (error) {
@@ -58,8 +68,24 @@ export class CourseService {
   // GET /api/Course/{id}
   static async getCourseById(id: string): Promise<Course | null> {
     try {
-      // SỬA LỖI: Truyền object { id }
-      const course = await GeneratedCourseService.getApiCourse1({ id });
+      // SỬA LỖI: Backend sử dụng endpoint GetCourseBy/{id}
+      // LƯU Ý: Swagger định nghĩa đường dẫn không có dấu '/': /api/Course/GetCourseBy{id}
+      const ts = Date.now();
+      const res = await fetch(`/api/proxy/Course/GetCourseBy${id}?_t=${ts}` , {
+        method: 'GET',
+        cache: 'no-store',
+        next: { revalidate: 0 },
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0',
+        },
+      });
+      if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        throw new Error(`Get by id failed: ${res.status} ${res.statusText} ${text}`);
+      }
+      const course = await res.json();
       return mapApiCourseToFeCourse(course);
     } catch (error) {
       console.error(`Failed to fetch course ${id}:`, error);
@@ -71,13 +97,23 @@ export class CourseService {
   static async createCourse(courseData: Partial<Course>): Promise<Course> {
     try {
       const requestBody: CreateCourseViewModel = {
-        courseCode: courseData.courseCode || "", // SỬA LỖI: Xử lý undefined
-        courseName: courseData.courseName || "", // SỬA LỖI: Xử lý undefined
+        courseCode: courseData.courseCode || "",
+        courseName: courseData.courseName || "",
         description: courseData.description,
       };
-      
-      // SỬA LỖI: Truyền object { requestBody }
-      const newCourse = await GeneratedCourseService.postApiCourse({ requestBody });
+
+      // SỬA LỖI: Backend yêu cầu CreateCourseByAdmin
+      const res = await fetch(`/api/proxy/Course/CreateCourseByAdmin`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody),
+        cache: 'no-store',
+      });
+      if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        throw new Error(`Create failed: ${res.status} ${res.statusText} ${text}`);
+      }
+      const newCourse = await res.json();
       return mapApiCourseToFeCourse(newCourse);
     } catch (error) {
       console.error("Failed to create course:", error);
@@ -94,12 +130,38 @@ export class CourseService {
         description: courseData.description,
       };
 
-      // SỬA LỖI: Truyền object { id, requestBody }
-      await GeneratedCourseService.putApiCourse({ id, requestBody });
-      
+      // SỬA LỖI: Backend dùng endpoint khác: PUT /api/Course/UpdateCourseBy/{id}
+      const res = await fetch(`/api/proxy/Course/UpdateCourseBy/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody),
+        cache: 'no-store',
+      });
+
+      if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        throw new Error(`Update failed: ${res.status} ${res.statusText} ${text}`);
+      }
+
+      // Sau khi cập nhật, lấy lại course để đồng bộ UI
       const updated = await this.getCourseById(id);
-      if (!updated) throw new Error("Failed to retrieve updated course");
-      
+      if (!updated) {
+        // Fallback nếu BE không trả dữ liệu get-by-id được
+        return {
+          courseId: id,
+          courseCode: requestBody.courseCode,
+          courseName: requestBody.courseName,
+          description: requestBody.description || "",
+          semester: courseData.semester || "N/A",
+          year: courseData.year || new Date().getFullYear(),
+          status: courseData.status || "open",
+          createdDate: courseData.createdDate || new Date().toISOString(),
+          updatedDate: new Date().toISOString(),
+          lecturerId: courseData.lecturerId || "",
+          groupCount: courseData.groupCount || 0,
+          studentCount: courseData.studentCount || 0,
+        };
+      }
       return updated;
     } catch (error) {
       console.error(`Failed to update course ${id}:`, error);
@@ -110,11 +172,40 @@ export class CourseService {
   // DELETE /api/Course/{id}
   static async deleteCourse(id: string): Promise<void> {
     try {
-      // SỬA LỖI: Truyền object { id }
-      await GeneratedCourseService.deleteApiCourse({ id });
+      // SỬA LỖI: Backend dùng endpoint khác: DELETE /api/Course/DeleteCourseBy/{id}
+      // Gọi qua proxy API để đính kèm Authorization từ cookie server-side
+      const res = await fetch(`/api/proxy/Course/DeleteCourseBy/${id}`, {
+        method: 'DELETE',
+        cache: 'no-store',
+      });
+      if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        throw new Error(`Delete failed: ${res.status} ${res.statusText} ${text}`);
+      }
     } catch (error) {
       console.error(`Failed to delete course ${id}:`, error);
       throw error;
+    }
+  }
+
+  // GET /api/Course/GetCourseByLecturer/{lecturerId}
+  static async getCoursesByLecturer(lecturerId: string): Promise<Course[]> {
+    try {
+      const res = await fetch(`/api/proxy/Course/GetCourseByLecturer/${lecturerId}`, {
+        method: 'GET',
+        cache: 'no-store',
+      });
+      if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        throw new Error(`Get by lecturer failed: ${res.status} ${res.statusText} ${text}`);
+      }
+      const items = await res.json();
+      // BE có thể trả một list hoặc một object dạng { items }. Chuẩn hóa về mảng.
+      const list = Array.isArray(items) ? items : (items.items || []);
+      return list.map(mapApiCourseToFeCourse);
+    } catch (error) {
+      console.error(`Failed to fetch courses by lecturer ${lecturerId}:`, error);
+      return [];
     }
   }
 }

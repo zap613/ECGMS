@@ -1,11 +1,18 @@
 // app/api/proxy/[...path]/route.ts
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
+export const dynamic = 'force-dynamic';
 
 // Hàm xử lý chung cho mọi Method (GET, POST, PUT, DELETE...)
-async function handleProxy(request: Request, { params }: { params: { path: string[] } }) {
+async function handleProxy(request: Request, ctx: { params: any }) {
   // 1. Lấy path từ URL (ví dụ: /api/proxy/Course -> path: ['Course'])
-  const path = params.path.join("/");
+  // Next 15: params là Dynamic API và cần await trước khi sử dụng
+  const resolvedParams = await ctx.params;
+  let path = (resolvedParams?.path ?? []).join("/");
+  // Tránh lặp 'api' nếu client gửi '/api/proxy/api/...'
+  if (path.startsWith("api/")) {
+    path = path.slice(4); // remove leading 'api/'
+  }
   
   // 2. Lấy Query Params (ví dụ: ?page=1&size=10)
   const { searchParams } = new URL(request.url);
@@ -23,7 +30,6 @@ async function handleProxy(request: Request, { params }: { params: { path: strin
 
     // 5. Chuẩn bị Headers
     const headers: HeadersInit = {
-      "Content-Type": "application/json",
       // Forward các header cần thiết khác nếu cần
     };
     
@@ -34,9 +40,16 @@ async function handleProxy(request: Request, { params }: { params: { path: strin
 
     // 6. Lấy Body (nếu có)
     let body = null;
-    if (request.method !== "GET" && request.method !== "HEAD") {
-      try { 
-        body = await request.text(); 
+    const isBodyAllowed = request.method !== "GET" && request.method !== "HEAD";
+    if (isBodyAllowed) {
+      try {
+        body = await request.text();
+        const reqContentType = request.headers.get("Content-Type");
+        if (reqContentType) {
+          headers["Content-Type"] = reqContentType;
+        } else if (body) {
+          headers["Content-Type"] = "application/json";
+        }
       } catch (e) {
         // Body rỗng hoặc lỗi parse, bỏ qua
       }
@@ -53,14 +66,22 @@ async function handleProxy(request: Request, { params }: { params: { path: strin
     });
 
     // 8. Trả kết quả về cho Client
+    const status = response.status;
+    const backendContentType = response.headers.get("Content-Type") || undefined;
+    const proxyHeaders: HeadersInit = backendContentType ? { "Content-Type": backendContentType } : {};
+
+    // Với 204/304, phải trả về response không có body
+    if (status === 204 || status === 304) {
+      return new NextResponse(null, {
+        status,
+        headers: {},
+      });
+    }
+
     const data = await response.text();
-    
-    // Trả về nguyên vẹn status và header từ Backend
     return new NextResponse(data, {
-      status: response.status,
-      headers: {
-        "Content-Type": "application/json",
-      },
+      status,
+      headers: proxyHeaders,
     });
 
   } catch (error) {

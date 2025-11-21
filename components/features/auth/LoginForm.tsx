@@ -6,13 +6,15 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { useCurrentUser } from '@/lib/hooks/useCurrentUser'
+import { AuthService } from '@/lib/api/authService'
 import { useRouter } from 'next/navigation'
 
 export function LoginForm() {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const { login, error } = useCurrentUser()
+  const { user } = useCurrentUser()
+  const [error, setError] = useState<string | null>(null)
   const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -20,10 +22,23 @@ export function LoginForm() {
     setIsLoading(true)
 
     try {
-      await login(username, password)
-      // Redirect based on user role
+      const result = await AuthService.login({ username, password })
+      // Lưu thông tin đăng nhập để các trang dashboard đọc được
+      try {
+        localStorage.setItem('token', result.token)
+        localStorage.setItem('currentUser', JSON.stringify(result.user))
+        // Thiết lập cookie để API routes server-side đọc token
+        // Lưu ý: đây là cookie không-HTTPOnly dùng tạm cho demo
+        document.cookie = `auth_token=${result.token}; Path=/; SameSite=Lax`;
+      } catch (e) {
+        console.warn('Failed to persist auth state', e)
+      }
+      setError(null)
+      // Redirect based on user role (đơn giản hóa về /dashboard)
       router.push('/dashboard')
     } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Login failed'
+      setError(msg)
       console.error('Login failed:', err)
     } finally {
       setIsLoading(false)

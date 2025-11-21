@@ -2,8 +2,15 @@
 import { NextResponse } from "next/server";
 
 export async function GET() {
-  const res = await fetch(`/api/proxy/courses?PageNumber=1&PageSize=1000`, {
+  const ts = Date.now();
+  const res = await fetch(`/api/proxy/Course/GetListCourses?PageNumber=1&PageSize=1000&_t=${ts}` , {
   cache: "no-store",
+  next: { revalidate: 0 },
+  headers: {
+    'Cache-Control': 'no-cache, no-store, must-revalidate',
+    'Pragma': 'no-cache',
+    'Expires': '0',
+  }
 });
 
 

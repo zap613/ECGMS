@@ -236,19 +236,31 @@ export const getResponseHeader = (response: Response, responseHeader?: string): 
 
 export const getResponseBody = async (response: Response): Promise<any> => {
     if (response.status !== 204) {
-        try {
-            const contentType = response.headers.get('Content-Type');
-            if (contentType) {
-                const jsonTypes = ['application/json', 'application/problem+json']
-                const isJSON = jsonTypes.some(type => contentType.toLowerCase().startsWith(type));
-                if (isJSON) {
+        const contentType = response.headers.get('Content-Type');
+        if (contentType) {
+            const jsonTypes = ['application/json', 'application/problem+json']
+            const isJSON = jsonTypes.some(type => contentType.toLowerCase().startsWith(type));
+            if (isJSON) {
+                try {
                     return await response.json();
-                } else {
+                } catch (error) {
+                    // Fallback when body is empty or not valid JSON
+                    try {
+                        const text = await response.text();
+                        return text && text.length > 0 ? text : undefined;
+                    } catch (e) {
+                        console.error(e);
+                        return undefined;
+                    }
+                }
+            } else {
+                try {
                     return await response.text();
+                } catch (e) {
+                    console.error(e);
+                    return undefined;
                 }
             }
-        } catch (error) {
-            console.error(error);
         }
     }
     return undefined;

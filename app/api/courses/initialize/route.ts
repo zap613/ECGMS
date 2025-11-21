@@ -1,50 +1,62 @@
 // app/api/courses/initialize/route.ts
-import { NextResponse } from "next/server";
-import { cookies } from "next/headers"; // Cần để lấy token
+import { NextRequest, NextResponse } from "next/server";
+import { cookies } from "next/headers";
 
-// Import type để đảm bảo type safety
-import type { CreateCourseViewModel } from "@/lib/api/generated/models/CreateCourseViewModel";
+const API_BASE_URL = process.env.BACKEND_URL || 'http://140.245.42.78:5050';
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const body = (await request.json()) as Partial<CreateCourseViewModel>;
-    const payload: CreateCourseViewModel = {
-      courseCode: body.courseCode ?? "",
-      courseName: body.courseName ?? "",
-      description: body.description ?? "",
-    };
+    const body = await request.json();
+    const { courseCode, courseName, description } = body;
 
-    if (!payload.courseCode || !payload.courseName) {
-      return NextResponse.json({ error: "Missing courseCode or courseName" }, { status: 400 });
+    // Validate input
+    if (!courseCode || !courseName) {
+      return NextResponse.json(
+        { error: "courseCode and courseName are required" },
+        { status: 400 }
+      );
     }
 
-    // Lấy Access Token từ Cookie (ưu tiên 'auth_token', fallback 'accessToken')
-    const cookieStore = await cookies(); 
-    const accessToken = cookieStore.get("auth_token")?.value 
-      ?? cookieStore.get("accessToken")?.value 
-      ?? "";
+    // Lấy token từ cookie và forward theo chuẩn Bearer
+    const cookieStore = await cookies();
+    const token = cookieStore.get('auth_token')?.value || cookieStore.get('AuthToken')?.value;
 
-    const createCourseRes = await fetch(`${process.env.BACKEND_URL}/api/Course/CreateCourseByAdmin`, {
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Gọi API backend với Authorization Bearer
+    const response = await fetch(`${API_BASE_URL}/api/Course/CreateCourseByAdmin`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        ...(accessToken ? { "Authorization": `Bearer ${accessToken}` } : {}),
+        "Authorization": `Bearer ${token}`,
       },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({
+        courseCode,
+        courseName,
+        description: description || "",
+      }),
     });
 
-    // Trả về nguyên dữ liệu từ server nếu thành công
-    if (createCourseRes.ok) {
-      const created = await createCourseRes.json();
-      return NextResponse.json(created, { status: 201 });
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("[API Initialize] Backend error:", errorText);
+      
+      return NextResponse.json(
+        { error: errorText || "Failed to create course" },
+        { status: response.status }
+      );
     }
 
-    // Nếu lỗi, trả về text để hiển thị
-    const errorText = await createCourseRes.text().catch(() => createCourseRes.statusText);
-    return NextResponse.json({ error: errorText }, { status: createCourseRes.status || 500 });
+    const createdCourse = await response.json();
+    return NextResponse.json(createdCourse, { status: 201 });
 
   } catch (error) {
-    console.error("[Initialization Error]", error);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    console.error("[API Initialize] Server error:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
   }
 }
