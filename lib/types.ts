@@ -165,6 +165,19 @@ export interface Grade {
   gradedDate: string;
 }
 
+// ===== CHECKPOINT TYPES =====
+export interface Checkpoint {
+  checkpointId: string;
+  courseId: string;
+  courseCode: string;
+  checkpointNumber: number; // 1, 2, 3, 4
+  checkpointName: string;
+  startDate: string;
+  endDate: string;
+  weight: number; // 25% for each checkpoint
+  description?: string;
+}
+
 // ===== TASK TYPES =====
 export interface Task {
   taskId: string;
@@ -172,12 +185,23 @@ export interface Task {
   description: string;
   groupId: string;
   groupName: string;
-  assignedTo: string;
-  assignedToId: string;
-  status: "pending" | "in-progress" | "completed";
+  courseId: string;
+  courseCode: string;
+  checkpointId: string;
+  checkpointNumber: number;
+  assignedTo?: string; // Optional - students self-assign
+  assignedToId?: string; // Optional - students self-assign
+  status: "pending" | "in-progress" | "submitted" | "graded";
   priority: "low" | "medium" | "high";
   dueDate: string;
   createdDate: string;
+  submittedDate?: string;
+  submittedBy?: string; // Group submission
+  grade?: number; // Task grade (shared by all group members)
+  maxScore?: number; // Maximum score for this task
+  feedback?: string; // Lecturer feedback
+  gradedBy?: string;
+  gradedDate?: string;
 }
 
 // ===== UTILITY TYPES =====
@@ -219,14 +243,46 @@ export interface CreateGroupForm {
 export interface CreateTaskForm {
   taskName: string;
   description: string;
-  assignedToId: string;
+  courseId: string;
+  checkpointId: string;
+  groupIds: string[]; // Multiple groups can be assigned
   priority: TaskPriority;
   dueDate: string;
+  maxScore: number;
 }
 
 export interface GradeForm {
   score: number;
   feedback?: string;
+}
+
+export interface TaskGradeForm {
+  taskId: string;
+  score: number;
+  feedback?: string;
+}
+
+// ===== CHECKPOINT GRADE TYPES =====
+export interface CheckpointGrade {
+  checkpointId: string;
+  checkpointNumber: number;
+  checkpointName: string;
+  groupId: string;
+  groupName: string;
+  taskGrades: number[]; // Array of task grades
+  averageGrade: number; // Average of all task grades
+  weight: number; // 25%
+  weightedScore: number; // averageGrade * weight / 100
+}
+
+export interface CourseFinalGrade {
+  courseId: string;
+  courseCode: string;
+  courseName: string;
+  groupId: string;
+  groupName: string;
+  checkpointGrades: CheckpointGrade[];
+  finalGrade: number; // Sum of all checkpoint weighted scores
 }
 
 // ===== DASHBOARD TYPES =====

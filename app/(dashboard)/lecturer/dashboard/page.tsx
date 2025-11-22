@@ -106,13 +106,13 @@ export default function LecturerDashboard() {
   );
 
   const stats = [
-    {
-      title: "Tổng số khóa học",
-      value: lecturerCourses.length,
-      icon: BookOpen,
-      color: "text-orange-600",
-      bgColor: "bg-orange-100",
-    },
+    // {
+    //   title: "Tổng số khóa học",
+    //   value: lecturerCourses.length,
+    //   icon: BookOpen,
+    //   color: "text-orange-600",
+    //   bgColor: "bg-orange-100",
+    // },
     {
       title: "Nhóm đang phụ trách",
       value: totalGroups,
