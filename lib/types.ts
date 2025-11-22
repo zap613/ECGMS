@@ -8,10 +8,16 @@ export interface User {
   email: string;
   role: "lecturer" | "student" | "admin";
   major?: "SS" | "SE";
-  skillSet?: string[];
+  skillSet?: string[] | string;
   birthday?: string;
   contactInfo?: string;
   groupId?: string | null; 
+  // Bổ sung theo yêu cầu Profile
+  roleId?: string;
+  studentCourses?: any[]; // Tối thiểu để phục vụ điều kiện Passed EXE101
+  userProfile?: UserProfile;
+  groups?: any[];
+  notifications?: any[];
 }
 
 // ===== COURSE TYPES =====
@@ -140,4 +146,26 @@ export interface MajorItem {
   majorCode: string;
   name: string;
   description?: string;
+}
+
+// ===== USER PROFILE (tối giản theo yêu cầu) =====
+export interface UserProfile {
+  userId?: string;
+  majorId?: string;
+  fullName?: string;
+  gpa?: number;
+  bio?: string;
+  avatarUrl?: string;
+  status?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  studentCode?: string;
+  major?: {
+    id: string;
+    majorCode?: string;
+    majorName?: string;
+    description?: string;
+    createdAt?: string;
+    updatedAt?: string;
+  };
 }

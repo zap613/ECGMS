@@ -5,12 +5,15 @@ import { DashboardLayout } from "@/components/layouts/dashboard-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { Loader2, UserCircle } from "lucide-react"
 import { getCurrentUser, updateCurrentUser } from "@/lib/utils/auth"
-import type { User, MajorItem } from "@/lib/types" // Import MajorItem từ file types đã cập nhật
+import type { User, MajorItem, UserProfile } from "@/lib/types" // Import MajorItem và UserProfile
 import { MajorService } from "@/lib/api/majorService" // Import Service Adapter mới tạo
+import { UserProfileService } from "@/lib/api/generated/services/UserProfileService"
 
 // Giả sử có danh sách các skill có thể chọn
 const availableSkills = ["Frontend", "Backend", "React", "Node.js", "Database", "DevOps", "CI/CD", "AWS", "UI/UX", "Business Analyst", "Tester", "QA", "VueJS", "Angular"];
@@ -21,9 +24,13 @@ export default function StudentProfilePage() {
   const [selectedSkills, setSelectedSkills] = React.useState<string[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [isSaving, setIsSaving] = React.useState(false);
+  const [isEditing, setIsEditing] = React.useState(false);
   
   // State cho danh sách chuyên ngành
   const [majors, setMajors] = React.useState<MajorItem[]>([]);
+  // State cho UserProfile từ API
+  const [profile, setProfile] = React.useState<UserProfile | null>(null);
+  const [editable, setEditable] = React.useState<{ fullName?: string | null; bio?: string | null; avatarUrl?: string | null }>({});
 
   React.useEffect(() => {
     const initData = async () => {
@@ -32,7 +39,41 @@ export default function StudentProfilePage() {
       setUser(currentUser);
       if (currentUser) {
         setSelectedMajor(currentUser.major);
-        setSelectedSkills(currentUser.skillSet || []);
+        // Chuẩn hóa skillSet về dạng string[] để tránh lỗi TypeScript
+        const skillsArray = Array.isArray(currentUser.skillSet)
+          ? currentUser.skillSet
+          : typeof currentUser.skillSet === 'string'
+            ? currentUser.skillSet.split(',').map(s => s.trim()).filter(Boolean)
+            : [];
+        setSelectedSkills(skillsArray);
+
+        // 2a. Load UserProfile từ API theo schema BE
+        try {
+          const apiProfile = await UserProfileService.getApiUserProfile1({ id: currentUser.userId });
+          // Map về UserProfile (FE)
+          const pAny = apiProfile as any;
+          const mappedProfile: UserProfile = {
+            userId: pAny.userId,
+            fullName: pAny.fullName,
+            bio: pAny.bio,
+            avatarUrl: pAny.avatarUrl,
+            status: pAny.status ?? undefined,
+            major: pAny.major ? {
+              id: pAny.major.majorId || pAny.major.id,
+              majorCode: pAny.major.majorCode,
+              majorName: pAny.major.name,
+              description: pAny.major.description,
+            } : undefined,
+          };
+          setProfile(mappedProfile);
+          setEditable({ fullName: mappedProfile.fullName ?? null, bio: mappedProfile.bio ?? null, avatarUrl: mappedProfile.avatarUrl ?? null });
+          // Nếu có major từ profile, ưu tiên dùng majorCode làm selectedMajor
+          if (mappedProfile.major?.majorCode) {
+            setSelectedMajor(mappedProfile.major.majorCode);
+          }
+        } catch (e) {
+          console.error("[Profile] Failed to fetch user profile by id:", currentUser.userId, e);
+        }
       }
 
       // 2. Load Majors từ API
@@ -58,22 +99,45 @@ export default function StudentProfilePage() {
   const handleSaveProfile = async () => {
     if (!user) return;
     setIsSaving(true);
+    try {
+      const requestBody = {
+        fullName: editable.fullName ?? null,
+        bio: editable.bio ?? null,
+        avatarUrl: editable.avatarUrl ?? null,
+      };
+      await UserProfileService.putApiUserProfile({ id: user.userId, requestBody });
 
-    const updatedUserData: User = {
-      ...user,
-      major: selectedMajor as ("SE" | "SS" | undefined), // Cast tạm thời để tương thích type User cũ
-      skillSet: selectedSkills,
-    };
+      const currentMajorCode = profile?.major?.majorCode;
+      if (selectedMajor && selectedMajor !== currentMajorCode) {
+        await UserProfileService.patchApiUserProfileMajor({ userId: user.userId, requestBody: { majorCode: selectedMajor } });
+      }
 
-    console.log("[Save Profile] Updating:", updatedUserData);
-    
-    // Cập nhật local storage
-    updateCurrentUser(updatedUserData);
-    setUser(updatedUserData);
+      const updatedProfile: UserProfile = {
+        ...profile,
+        fullName: editable.fullName ?? profile?.fullName ?? null,
+        bio: editable.bio ?? profile?.bio ?? null,
+        avatarUrl: editable.avatarUrl ?? profile?.avatarUrl ?? null,
+        major: selectedMajor ? { ...(profile?.major || {}), majorCode: selectedMajor } as any : profile?.major,
+      } as UserProfile;
+      setProfile(updatedProfile);
 
-    await new Promise(resolve => setTimeout(resolve, 1000)); // Giả lập độ trễ
-    setIsSaving(false);
-    alert("Hồ sơ đã được cập nhật!");
+      const updatedUserData: User = {
+        ...user,
+        major: selectedMajor as ("SE" | "SS" | undefined),
+        skillSet: selectedSkills,
+        fullName: (editable.fullName ?? user.fullName) as string,
+      };
+      updateCurrentUser(updatedUserData);
+      setUser(updatedUserData);
+
+      setIsEditing(false);
+      alert("Hồ sơ đã được cập nhật!");
+    } catch (err) {
+      console.error("[Save Profile] Failed:", err);
+      alert("Cập nhật hồ sơ thất bại. Vui lòng thử lại.");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   if (isLoading) {
@@ -104,8 +168,27 @@ export default function StudentProfilePage() {
           <CardHeader className="flex flex-row items-center gap-4">
               <UserCircle className="w-12 h-12 text-gray-400"/>
               <div>
-                  <CardTitle>{user.fullName}</CardTitle>
+                  <CardTitle>
+                    {isEditing ? (
+                      <Input value={editable.fullName ?? ''} onChange={e => setEditable(prev => ({ ...prev, fullName: e.target.value }))} placeholder="Họ tên" />
+                    ) : (
+                      profile?.fullName || user.fullName
+                    )}
+                  </CardTitle>
                   <CardDescription>{user.email} ({user.userId})</CardDescription>
+              </div>
+              <div className="ml-auto flex gap-2">
+                {!isEditing ? (
+                  <Button variant="outline" onClick={() => setIsEditing(true)}>Edit</Button>
+                ) : (
+                  <>
+                    <Button variant="secondary" onClick={() => { setIsEditing(false); setEditable({ fullName: profile?.fullName ?? null, bio: profile?.bio ?? null, avatarUrl: profile?.avatarUrl ?? null }); setSelectedMajor(profile?.major?.majorCode); }}>Cancel</Button>
+                    <Button onClick={handleSaveProfile} disabled={isSaving}>
+                      {isSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin"/>}
+                      Save
+                    </Button>
+                  </>
+                )}
               </div>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -113,7 +196,11 @@ export default function StudentProfilePage() {
               {/* Thông tin cố định */}
               <div className="space-y-1">
                 <Label>Họ tên:</Label>
-                <p className="text-sm text-muted-foreground">{user.fullName}</p>
+                {isEditing ? (
+                  <Input value={editable.fullName ?? ''} onChange={e => setEditable(prev => ({ ...prev, fullName: e.target.value }))} placeholder="Họ tên" />
+                ) : (
+                  <p className="text-sm text-muted-foreground">{profile?.fullName || user.fullName}</p>
+                )}
               </div>
                <div className="space-y-1">
                 <Label>Email:</Label>
@@ -138,13 +225,31 @@ export default function StudentProfilePage() {
                     <SelectContent>
                       {/* Sử dụng state majors lấy từ API */}
                       {majors.map(major => (
-                        <SelectItem key={major.id} value={major.majorCode}>
+                        <SelectItem key={major.id || major.majorCode} value={major.majorCode}>
                           {major.name} ({major.majorCode})
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                </div>
+            </div>
+
+            {/* Giới thiệu và Avatar */}
+            <div className="space-y-1 md:col-span-2">
+              <Label>Giới thiệu (Bio)</Label>
+              {isEditing ? (
+                <Textarea value={editable.bio ?? ''} onChange={e => setEditable(prev => ({ ...prev, bio: e.target.value }))} placeholder="Giới thiệu ngắn về bạn" />
+              ) : (
+                <p className="text-sm text-muted-foreground">{profile?.bio || 'Chưa cập nhật'}</p>
+              )}
+            </div>
+            <div className="space-y-1 md:col-span-2">
+              <Label>Ảnh đại diện (Avatar URL)</Label>
+              {isEditing ? (
+                <Input value={editable.avatarUrl ?? ''} onChange={e => setEditable(prev => ({ ...prev, avatarUrl: e.target.value }))} placeholder="https://..." />
+              ) : (
+                <p className="text-sm text-muted-foreground">{profile?.avatarUrl || 'Chưa cập nhật'}</p>
+              )}
             </div>
 
              <div className="space-y-1">
@@ -164,12 +269,14 @@ export default function StudentProfilePage() {
                 <p className="text-xs text-muted-foreground mt-2">Chọn các kỹ năng bạn có để các nhóm khác có thể tìm thấy bạn.</p>
              </div>
 
-             <div className="flex justify-end pt-4 border-t">
-                 <Button onClick={handleSaveProfile} disabled={isSaving}>
-                    {isSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin"/>}
-                    Lưu thay đổi
-                 </Button>
-             </div>
+             {isEditing && (
+               <div className="flex justify-end pt-4 border-t">
+                   <Button onClick={handleSaveProfile} disabled={isSaving}>
+                      {isSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin"/>}
+                      Lưu thay đổi
+                   </Button>
+               </div>
+             )}
           </CardContent>
         </Card>
       </div>

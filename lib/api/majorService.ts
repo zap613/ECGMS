@@ -7,17 +7,19 @@ import type { MajorItem } from "@/lib/types";
 
 // Cấu hình Base URL (nếu chưa được set global)
 const IS_MOCK_MODE = process.env.NEXT_PUBLIC_MOCK_MODE === 'true';
-OpenAPI.BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://140.245.42.78:5050';
+// Luôn trỏ về Proxy để tránh CORS
+const apiUrl = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '');
+OpenAPI.BASE = apiUrl ? `${apiUrl}/proxy` : '/api/proxy';
 
-// Hàm chuyển đổi từ API Model sang Frontend Model
+// Hàm chuyển đổi từ API Model sang Frontend Model (theo schema BE: majorId, majorCode, name)
 const mapApiMajorToMajorItem = (m: ApiMajor): MajorItem => {
-  return {
-    id: m.id || "",
-    majorCode: m.majorCode || "",
-    // Map 'majorName' từ API sang 'name' của Frontend
-    name: m.majorName || m.majorCode || "Unknown", 
-    description: m.description || "",
-  };
+  const anyM = m as any;
+  const id = anyM.majorId || anyM.id || "";
+  const majorCode = anyM.majorCode || anyM.code || "";
+  const name = anyM.name || anyM.majorName || majorCode || "Unknown";
+  const description = anyM.description || "";
+
+  return { id, majorCode, name, description };
 };
 
 // Service giả lập (Mock)

@@ -31,7 +31,6 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
 
   const studentNavItems = [
     { name: "Dashboard", href: "/student/dashboard", icon: LayoutDashboard },
-    { name: "My Courses", href: "/student/courses", icon: BookOpen },
     { name: "My Group", href: "/student/group", icon: Users },
     { name: "My Tasks", href: "/student/tasks", icon: ClipboardList },
     { name: "My Grades", href: "/student/grades", icon: Award },
@@ -42,6 +41,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
     { name: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
     { name: "Users", href: "/admin/users", icon: Users },
     { name: "Courses", href: "/admin/courses", icon: BookOpen },
+    { name: "Groups", href: "/admin/groups", icon: Users },
   ]
 
   const navItems = role === "lecturer" ? lecturerNavItems : role === "student" ? studentNavItems : adminNavItems

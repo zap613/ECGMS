@@ -10,10 +10,11 @@ import { useEffect } from "react";
  */
 export function ApiProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
-    // QUAN TRỌNG: Thiết lập địa chỉ gốc trỏ về Proxy của Next.js
-    // Client sẽ gọi: localhost:3000/api/proxy/... -> Next.js Proxy -> Backend
-    // Điều này giúp tránh lỗi CORS trên trình duyệt.
-    OpenAPI.BASE = '/api/proxy'; 
+    // Thiết lập BASE trỏ về Proxy của Next.js, hỗ trợ dùng biến môi trường
+    // Nếu NEXT_PUBLIC_API_URL = http://localhost:3000/api
+    // thì BASE sẽ là http://localhost:3000/api/proxy
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '');
+    OpenAPI.BASE = apiUrl ? `${apiUrl}/proxy` : '/api/proxy';
 
     // Token sẽ được Proxy tự động lấy từ Cookie (HttpOnly) và gắn vào header.
     // Tuy nhiên, nếu bạn cần dùng token ở client cho mục đích khác, có thể lấy từ localStorage

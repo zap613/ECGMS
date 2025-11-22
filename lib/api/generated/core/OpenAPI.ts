@@ -19,7 +19,10 @@ export type OpenAPIConfig = {
 
 // ✅ FIX CORS: Force BASE luôn là /api/proxy
 export const OpenAPI: OpenAPIConfig = {
-    BASE: '/api/proxy',
+    // Ưu tiên NEXT_PUBLIC_API_URL nếu có, tự động thêm "/proxy"
+    BASE: (process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') || '')
+        ? `${(process.env.NEXT_PUBLIC_API_URL as string).replace(/\/$/, '')}/proxy`
+        : '/api/proxy',
     VERSION: '1.0',
     WITH_CREDENTIALS: false,
     CREDENTIALS: 'include',
@@ -27,5 +30,5 @@ export const OpenAPI: OpenAPIConfig = {
     USERNAME: undefined,
     PASSWORD: undefined,
     HEADERS: undefined,
-    ENCODE_PATH: undefined,
+    ENCODE_PATH: encodeURIComponent,
 };

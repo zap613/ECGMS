@@ -7,7 +7,9 @@ import {
 } from "@/lib/api/generated";
 import type { Task, TaskStatus } from "@/lib/types";
 
-OpenAPI.BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://140.245.42.78:5050';
+// Luôn trỏ về Proxy để tránh CORS
+const apiUrl = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '');
+OpenAPI.BASE = apiUrl ? `${apiUrl}/proxy` : '/api/proxy';
 
 // Helper map status, priority... (giữ nguyên các helper cũ nếu có hoặc viết lại gọn)
 function mapApiStatusToFeStatus(apiStatus: string | null | undefined): TaskStatus {
