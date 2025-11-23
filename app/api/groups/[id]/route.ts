@@ -3,13 +3,14 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await context.params;
     const token = request.cookies.get('auth_token')?.value;
     
     const response = await fetch(
-      `${process.env.BACKEND_URL}/api/groups/${params.id}`,
+      `${process.env.BACKEND_URL}/api/groups/${id}`,
       {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -30,14 +31,15 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const body = await request.json();
+    const { id } = await context.params;
     const token = request.cookies.get('auth_token')?.value;
     
     const response = await fetch(
-      `${process.env.BACKEND_URL}/api/groups/${params.id}`,
+      `${process.env.BACKEND_URL}/api/groups/${id}`,
       {
         method: 'PUT',
         headers: {

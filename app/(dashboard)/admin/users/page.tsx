@@ -12,6 +12,7 @@ import { Loader2, User, RefreshCw, ArrowUpDown, ArrowUp, ArrowDown, Search, Filt
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import ChangeMockData from "@/components/features/ChangeMockData";
 
 // --- Interface Definitions ---
 interface Student {
@@ -45,6 +46,11 @@ export default function AdminDataManagementPage() {
   const [students, setStudents] = React.useState<Student[]>([]);
   const [isLoadingStudents, setIsLoadingStudents] = React.useState(true);
   const [lastFetchTime, setLastFetchTime] = React.useState<Date | null>(null);
+  const [useMock, setUseMock] = React.useState<boolean>(() => {
+    if (typeof window === 'undefined') return true;
+    const saved = localStorage.getItem('useMock');
+    return saved ? saved === 'true' : true;
+  });
 
   // Filter & Pagination State
   const [searchTerm, setSearchTerm] = React.useState("");
@@ -243,7 +249,8 @@ export default function AdminDataManagementPage() {
           <h1 className="text-3xl font-bold text-gray-900">Data Management</h1>
           <p className="text-gray-600 mt-1">Import student data and view lists.</p>
         </div>
-
+        <ChangeMockData loading={isLoadingStudents} onRefresh={fetchStudents} useMock={useMock} setUseMock={setUseMock} />
+        
         {/* Import Section - Đã xóa Lecturer Import */}
         <div className="grid grid-cols-1 gap-6">
           <ImportCard 

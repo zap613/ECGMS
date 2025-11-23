@@ -37,6 +37,8 @@ import { CourseFormDialog } from "@/components/features/course/CourseFormDialog"
 import { CourseService } from "@/lib/api/courseService" 
 import type { Course } from "@/lib/types"
 import { getCoursesServerSide } from '@/app/(dashboard)/admin/courses/action';
+import ChangeMockData from "@/components/features/ChangeMockData";
+import { getCourses as getCoursesMock } from "@/lib/mock-data/courses";
 
 export default function AdminCoursesPage() {
   const [courses, setCourses] = React.useState<Course[]>([]);
@@ -44,25 +46,29 @@ export default function AdminCoursesPage() {
   const [isWizardOpen, setIsWizardOpen] = React.useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
   const [editingCourse, setEditingCourse] = React.useState<Course | null>(null);
+  const [useMock, setUseMock] = React.useState<boolean>(() => {
+    if (typeof window === 'undefined') return true;
+    const saved = localStorage.getItem('useMock');
+    return saved ? saved === 'true' : true;
+  });
   // Đã loại bỏ form "Tạo Khóa học mới" theo yêu cầu
 
-  // Fetch Courses
-  React.useEffect(() => {
-    const fetchCourses = async () => {
-      setIsLoading(true);
-      try {
-        // Gọi qua Adapter, hàm này đã map data đúng chuẩn Frontend
-        const data = await getCoursesServerSide();
-        setCourses(data);
-      } catch (error) {
-        console.error("Failed to fetch courses:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  async function fetchCourses() {
+    setIsLoading(true);
+    try {
+      const data = useMock ? await getCoursesMock() : await getCoursesServerSide();
+      setCourses(data);
+    } catch (error) {
+      console.error("Failed to fetch courses:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }
 
+  React.useEffect(() => {
     fetchCourses();
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [useMock]);
 
   const handleEditCourse = (course: Course) => {
     setEditingCourse(course);
@@ -140,7 +146,7 @@ export default function AdminCoursesPage() {
           </Button>
           </div>
         </div>
-
+       <ChangeMockData loading={isLoading} onRefresh={fetchCourses} useMock={useMock} setUseMock={setUseMock} />
         <Card>
            <CardHeader>
              <CardTitle>Course List ({courses.length})</CardTitle>

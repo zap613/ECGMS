@@ -130,6 +130,27 @@ export class GroupService {
     }
   }
 
+  static async leaveGroup(groupId: string, userId: string): Promise<FeGroup | null> {
+    try {
+      // Tìm membership theo groupId + userId
+      const memberships = await GeneratedGroupMemberService.getApiGroupMember({ groupId, userId });
+      const membership = Array.isArray(memberships) ? memberships[0] : undefined;
+      const membershipId = membership?.id;
+      if (!membershipId) {
+        // Không tìm thấy membership, có thể đã rời trước đó
+        console.warn("leaveGroup: No membership found for user in group", { groupId, userId });
+      } else {
+        await GeneratedGroupMemberService.deleteApiGroupMember({ id: membershipId });
+      }
+      // Lấy lại thông tin nhóm (có thể đã giảm memberCount)
+      const updatedGroup = await this.getGroupById(groupId);
+      return updatedGroup;
+    } catch (err: any) {
+      console.error("leaveGroup error:", err);
+      throw err;
+    }
+  }
+
   static async createGroup(data: { name: string, courseId: string }): Promise<FeGroup> {
     try {
       const res = await fetch(`/api/proxy/Group/CreateGroup`, {

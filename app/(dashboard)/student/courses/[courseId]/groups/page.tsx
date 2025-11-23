@@ -12,6 +12,8 @@ import type { Group, User } from "@/lib/types"
 import { getCurrentUser, updateCurrentUser } from "@/lib/utils/auth"
 import { useToast } from "@/components/ui/use-toast"
 import { isSelfSelectOpen } from "@/lib/config/businessRules"
+import ChangeMockData, { type ChangeMockDataProps } from "@/components/features/ChangeMockData"
+import { mockGroups } from "@/lib/mock-data/groups"
 
 export default function FindGroupsPage({ params }: { params: { courseId: string } }) {
   const router = useRouter()
@@ -20,26 +22,39 @@ export default function FindGroupsPage({ params }: { params: { courseId: string 
   const [isLoading, setIsLoading] = React.useState(true)
   const [joiningId, setJoiningId] = React.useState<string | null>(null)
   const [user, setUser] = React.useState<User | null>(null)
+  const [useMock, setUseMock] = React.useState<boolean>(() => {
+    if (typeof window === 'undefined') return true
+    try {
+      const v = localStorage.getItem('useMock')
+      return v ? v === 'true' : true
+    } catch { return true }
+  })
+
+  const loadGroups = React.useCallback(async () => {
+    setIsLoading(true)
+    try {
+      if (useMock) {
+        const data = mockGroups.filter(g => (g.courseCode || '').toUpperCase() === params.courseId.toUpperCase())
+        const visible = data.filter(g => g.status !== 'private')
+        setGroups(visible)
+      } else {
+        const data = await GroupService.getGroups(params.courseId)
+        const visible = data.filter(g => g.status !== 'private')
+        setGroups(visible)
+      }
+    } catch (err) {
+      console.error("Failed to fetch groups:", err)
+    } finally {
+      setIsLoading(false)
+    }
+  }, [useMock, params.courseId])
 
   React.useEffect(() => {
     // Load user
     const u = getCurrentUser() as User | null
     setUser(u)
-
-    const fetchGroups = async () => {
-      setIsLoading(true)
-      try {
-        const data = await GroupService.getGroups(params.courseId)
-        const visible = data.filter(g => g.status !== 'private')
-        setGroups(visible)
-      } catch (err) {
-        console.error("Failed to fetch groups:", err)
-      } finally {
-        setIsLoading(false)
-      }
-    }
-    if (params.courseId) fetchGroups()
-  }, [params.courseId])
+    if (params.courseId) loadGroups()
+  }, [params.courseId, loadGroups])
 
   const handleJoinGroup = async (groupId: string) => {
     if (!user || user.role !== 'student') {
@@ -100,6 +115,12 @@ export default function FindGroupsPage({ params }: { params: { courseId: string 
               <PlusCircle className="w-4 h-4 mr-2" />
               Tạo nhóm mới
             </Button>
+            <ChangeMockData
+              loading={isLoading}
+              onRefresh={loadGroups}
+              useMock={useMock}
+              setUseMock={setUseMock}
+            />
           </div>
         </div>
 
@@ -117,6 +138,7 @@ export default function FindGroupsPage({ params }: { params: { courseId: string 
                   onJoin={handleJoinGroup}
                   onApply={handleApplyToGroup}
                   isJoining={joiningId === group.groupId}
+                  disableJoin={Boolean(user?.groupId)}
                 />
               ))
             ) : (

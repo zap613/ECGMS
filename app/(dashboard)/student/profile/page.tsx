@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge"
 import { Loader2, UserCircle } from "lucide-react"
 import { getCurrentUser, updateCurrentUser } from "@/lib/utils/auth"
 import type { User, MajorItem, UserProfile } from "@/lib/types" // Import MajorItem và UserProfile
+import type { ChangeMockDataProps } from "@/components/features/ChangeMockData"
 import { MajorService } from "@/lib/api/majorService" // Import Service Adapter mới tạo
 import { UserProfileService } from "@/lib/api/generated/services/UserProfileService"
 

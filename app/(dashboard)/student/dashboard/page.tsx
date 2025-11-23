@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { DashboardLayout } from "@/components/layouts/dashboard-layout" // Đường dẫn đã được xác nhận
 import { getCurrentUser } from "@/lib/utils/auth" // Đường dẫn đã được xác nhận
 import type { User } from "@/lib/types"
+import type { ChangeMockDataProps } from "@/components/features/ChangeMockData"
 
 export default function StudentDashboard() {
   const router = useRouter()

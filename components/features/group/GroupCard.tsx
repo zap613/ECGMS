@@ -23,9 +23,10 @@ interface GroupCardProps {
   onJoin?: (groupId: string) => void;
   onApply?: (groupId: string) => void;
   isJoining?: boolean; 
+  disableJoin?: boolean;
 }
 
-export function GroupCard({ group, onJoin, onApply, isJoining = false }: GroupCardProps) {
+export function GroupCard({ group, onJoin, onApply, isJoining = false, disableJoin = false }: GroupCardProps) {
   // Vì 'group' là kiểu FeGroup (camelCase), nên mọi thứ ở đây đều đúng
   const { text, variant, icon } = statusConfig[group.status] || statusConfig.open
   const memberPercentage = (group.memberCount / group.maxMembers) * 100
@@ -96,13 +97,13 @@ export function GroupCard({ group, onJoin, onApply, isJoining = false }: GroupCa
       </CardContent>
       <CardFooter>
         {group.status === "open" && (
-          <Button className="w-full" onClick={handleJoinClick} disabled={isJoining}>
+          <Button className="w-full" onClick={handleJoinClick} disabled={isJoining || disableJoin}>
             {isJoining && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
             Tham gia ngay
           </Button>
         )}
         {group.status === "lock" && (
-          <Button variant="secondary" className="w-full" onClick={handleApplyClick} disabled={isJoining}>
+          <Button variant="secondary" className="w-full" onClick={handleApplyClick} disabled={isJoining || disableJoin}>
              {isJoining && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
             Nộp đơn ứng tuyển
           </Button>
