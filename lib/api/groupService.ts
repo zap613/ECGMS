@@ -46,6 +46,14 @@ const mapApiGroupToFeGroup = (g: any): FeGroup => {
       // Map membership ID if available so UI can perform DELETE correctly
       memberId: gm.id || gm.groupMemberId || gm.membershipId || gm.memberId,
       groupId: gm.groupId || g.id || g.groupId,
+      // Required course fields on GroupMember per FE types
+      courseId: g.courseId || g.course?.id || "",
+      courseCode: g.course?.courseCode || g.courseCode || "N/A",
+      courseName: g.course?.courseName || "N/A",
+      semester: (g.course?.semester || g.course?.term || "N/A") as string,
+      year: (typeof g.course?.year === 'number' ? g.course.year : new Date().getFullYear()),
+      // Ưu tiên lecturer gán ở Group level nếu có (swagger field: lectureId), fallback về lecturer của Course
+      lecturerId: (g.lectureId || g.leaderLecturerId || g.groupLecturerId || null) || g.course?.lecturerId || (g.course?.lecturer?.id ?? ""),
     };
   });
 
@@ -156,13 +164,31 @@ export class GroupService {
 
   static async createGroup(data: { name: string, courseId: string }): Promise<FeGroup> {
     try {
-      const res = await fetch(`/api/proxy/Group/CreateGroup`, {
+      // Prefer documented route: POST /api/Group/CreateGroup
+      // Try include courseId first to satisfy possible DB constraints
+      let res = await fetch(`/api/proxy/Group/CreateGroup`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        // Một số triển khai backend yêu cầu courseId không-null khi tạo Group
-        // Gửi kèm cả courseId để tránh lỗi 500 khi DB yêu cầu ràng buộc
         body: JSON.stringify({ name: data.name, courseId: data.courseId }),
       });
+      // Fallback: if backend rejects extra fields, retry with only name
+      if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        res = await fetch(`/api/proxy/Group/CreateGroup`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: data.name }),
+        });
+        // Secondary fallback: if still failing, try ASCII-safe name with courseId
+        if (!res.ok) {
+          const ascii = (data.name || '').normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/[^\x20-\x7E]/g, '').trim() || data.name;
+          res = await fetch(`/api/proxy/Group/CreateGroup`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: ascii, courseId: data.courseId }),
+          });
+        }
+      }
       if (!res.ok) {
         const text = await res.text().catch(() => '');
         throw new Error(`CreateGroup failed: ${res.status} ${res.statusText} ${text}`);
@@ -171,7 +197,7 @@ export class GroupService {
       // Nếu backend bỏ qua courseId ở bước tạo, đảm bảo cập nhật sau khi tạo
       const gid = createdGroup?.id || createdGroup?.groupId;
       const createdCourseId = createdGroup?.courseId;
-      if (gid && !createdCourseId && data.courseId) {
+      if (gid && data.courseId && (createdCourseId == null || createdCourseId !== data.courseId)) {
         try {
           await this.updateGroup(gid, { courseId: data.courseId });
         } catch (e) {
@@ -212,6 +238,14 @@ export class GroupService {
         leaderId: update.leaderId as any,
         status: update.status as any,
       };
+      if (!requestBody.name) {
+        try {
+          const current = await this.getGroupById(id);
+          if (current?.groupName) {
+            requestBody.name = current.groupName;
+          }
+        } catch {}
+      }
       const res = await fetch(`/api/proxy/Group/UpdateGroupBy/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -219,12 +253,35 @@ export class GroupService {
       });
       if (!res.ok) {
         const text = await res.text().catch(() => '');
+        if (res.status === 404 && /topic/i.test(text)) {
+          try {
+            const raw = await fetch(`/api/proxy/Group/GetGroupBy/${id}`, { cache: 'no-store', next: { revalidate: 0 } });
+            if (raw.ok) {
+              const currentRaw = await raw.json();
+              const currentTopicId = currentRaw?.topicId || currentRaw?.topic?.id || null;
+              if (currentTopicId) {
+                const retryRes = await fetch(`/api/proxy/Group/UpdateGroupBy/${id}`, {
+                  method: 'PUT',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ ...requestBody, topicId: currentTopicId }),
+                });
+                if (retryRes.ok) {
+                  const updated2 = await retryRes.json();
+                  return mapApiGroupToFeGroup(updated2);
+                }
+                const retryText = await retryRes.text().catch(() => '');
+                throw new Error(`UpdateGroup failed: ${retryRes.status} ${retryRes.statusText} ${retryText}`);
+              }
+            }
+          } catch {}
+        }
         throw new Error(`UpdateGroup failed: ${res.status} ${res.statusText} ${text}`);
       }
       const updated = await res.json();
       return mapApiGroupToFeGroup(updated);
     } catch (err) {
-      throw new Error("Không thể cập nhật nhóm.");
+      const message = err instanceof Error ? err.message : "Không thể cập nhật nhóm.";
+      throw new Error(message);
     }
   }
 
@@ -244,7 +301,7 @@ export class GroupService {
       let name = '';
       while (true) {
         const seq = String(seqNumber).padStart(2, '0');
-        const candidate = `Nhóm ${courseCode}-${seq}`;
+        const candidate = `Group ${courseCode}-${seq}`;
         if (!existingNames.has(candidate)) {
           name = candidate;
           break;

@@ -5,7 +5,7 @@ import type React from "react";
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { LayoutDashboard, BookOpen, Users, ClipboardList, Award, LogOut, Menu, X, User as UserIcon } from "lucide-react"
+import { LayoutDashboard, BookOpen, Users, ClipboardList, Award, LogOut, Menu, X, User as UserIcon, UserX } from "lucide-react"
 
 interface DashboardLayoutProps {
   children: React.ReactNode;

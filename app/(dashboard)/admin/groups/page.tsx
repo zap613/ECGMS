@@ -1,3 +1,4 @@
+// app/(dashboard)/admin/groups/page.tsx
 "use client"
 
 import * as React from "react"
@@ -23,6 +24,7 @@ import { mockGroups } from "@/lib/mock-data/groups"
 import { EditGroupDialog } from "@/components/features/group/EditGroupDialog"
 import { LecturerCourseService, UserService } from "@/lib/api/generated"
 import { Badge } from "@/components/ui/badge"
+import { Shuffle } from "lucide-react"
 
 export default function AdminGroupsPage() {
   const { toast } = useToast()
@@ -43,6 +45,7 @@ export default function AdminGroupsPage() {
   const [courseLecturerName, setCourseLecturerName] = React.useState<string>("—")
   const [editOpen, setEditOpen] = React.useState(false)
   const [editTarget, setEditTarget] = React.useState<{ id: string; name: string; courseCode: string } | null>(null)
+  const [isRandomizing, setIsRandomizing] = React.useState(false)
 
   React.useEffect(() => {
     try {
@@ -57,15 +60,25 @@ export default function AdminGroupsPage() {
     ;(async () => {
       try {
         const list = useMock ? await getCoursesMock() : await CourseService.getCourses()
-        setCourses(list)
+        // Chỉ hiển thị các course không phải Inactive
+        const activeCourses = (list || []).filter(c => String(c.status || 'Active').toLowerCase() !== 'inactive')
+        setCourses(activeCourses)
         // Reset lựa chọn khi danh sách thay đổi
-        if (list.length > 0) {
-          setSelectedCourseId(list[0].courseId)
-          setSelectedCourseCode(list[0].courseCode)
-          setSelectedCourseName(list[0].courseName)
-          await loadGroups(list[0].courseCode)
-          loadEmptyCount(list[0].courseCode)
-          await loadCourseLecturer(list[0].courseId, list[0].courseCode)
+        if (activeCourses.length > 0) {
+          const first = activeCourses[0]
+          setSelectedCourseId(first.courseId)
+          setSelectedCourseCode(first.courseCode)
+          setSelectedCourseName(first.courseName)
+          await loadGroups(first.courseCode)
+          loadEmptyCount(first.courseCode)
+          await loadCourseLecturer(first.courseId, first.courseCode)
+        } else {
+          // Không có course Active -> clear selection
+          setSelectedCourseId("")
+          setSelectedCourseCode("")
+          setSelectedCourseName("")
+          setGroups([])
+          setEmptyCount(null)
         }
       } catch (err) {
         toast({ title: "Lỗi", description: "Không thể tải danh sách môn học." })
@@ -248,6 +261,46 @@ export default function AdminGroupsPage() {
     }
   }, [mapApiGroupToRow, toast, useMock, courses, courseLecturerName])
 
+  // Random Leader cho các nhóm có thành viên nhưng chưa có Leader
+  const handleRandomizeLeaders = React.useCallback(async () => {
+    const targetGroups = groups.filter(g => (g.memberCount > 0) && !g.hasLeader)
+
+    if (targetGroups.length === 0) {
+      toast({ title: "Không cần xử lý", description: "Tất cả các nhóm có thành viên đều đã có Leader." })
+      return
+    }
+
+    if (!selectedCourseCode) {
+      toast({ title: "Thiếu thông tin", description: "Vui lòng chọn môn học." })
+      return
+    }
+
+    if (!confirm(`Tìm thấy ${targetGroups.length} nhóm chưa có Leader. Bạn có muốn chọn ngẫu nhiên không?`)) return
+
+    setIsRandomizing(true)
+    try {
+      const promises = targetGroups.map(async (g) => {
+        const members = Array.isArray(g.members) ? g.members : []
+        if (members.length === 0) return
+        const randomIndex = Math.floor(Math.random() * members.length)
+        const randomMember = members[randomIndex]
+        const leaderId = randomMember?.userId || randomMember?.studentId || randomMember?.id || ""
+        if (!leaderId) return
+        await GroupService.updateGroup(g.id, { leaderId, name: g.name })
+      })
+      const results = await Promise.allSettled(promises)
+      const successCount = results.filter(r => r.status === 'fulfilled').length
+      const failCount = results.length - successCount
+      toast({ title: successCount > 0 ? "Thành công" : "Lỗi", description: successCount > 0 ? `Đã cập nhật Leader cho ${successCount}/${results.length} nhóm.` : "Không thể cập nhật leader cho các nhóm." })
+      await loadGroups(selectedCourseCode)
+    } catch (error) {
+      console.error("Randomize leaders error:", error)
+      toast({ title: "Lỗi", description: String((error as any)?.message || "Có lỗi xảy ra khi random leader.") })
+    } finally {
+      setIsRandomizing(false)
+    }
+  }, [groups, selectedCourseCode, toast, loadGroups])
+
   return (
     <DashboardLayout role="admin">
       <div className="space-y-6">
@@ -302,6 +355,13 @@ export default function AdminGroupsPage() {
               >
                 Phân bổ tự động
               </Button>
+              <Button 
+                variant="outline" 
+                onClick={handleRandomizeLeaders} 
+                disabled={isRandomizing || !selectedCourseCode}
+              >
+                <Shuffle className="w-4 h-4 mr-2" /> Random Leader
+              </Button>
             </div>
 
             {/* Bộ lọc */}
@@ -341,7 +401,15 @@ export default function AdminGroupsPage() {
               <span>Nhóm trống: {groups.filter(g => g.memberCount === 0).length}</span>
               {selectedCourseId && (
                 <span className="text-gray-600">
-                  {loadingCount ? "Đang kiểm tra nhóm trống..." : (emptyCount === null ? "Chưa kiểm tra" : (emptyCount === 0 ? `Khoá ${selectedCourseCode} chưa có nhóm trống.` : `Khoá ${selectedCourseCode} đang có ${emptyCount} nhóm trống.`))}
+                  {loadingCount
+                    ? "Đang kiểm tra nhóm trống..."
+                    : emptyCount === null
+                      ? "Chưa kiểm tra"
+                      : (emptyCount === 0
+                          ? (groups.length === 0
+                              ? "Chưa khởi tạo nhóm."
+                              : "Tất cả các nhóm đều đã có thành viên hoạt động.")
+                          : `Khoá ${selectedCourseCode} đang có ${emptyCount} nhóm trống.`)}
                 </span>
               )}
             </div>

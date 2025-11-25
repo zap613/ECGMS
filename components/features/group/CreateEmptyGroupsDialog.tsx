@@ -1,3 +1,4 @@
+// components/features/group/CreateEmptyGroupsDialog.tsx
 "use client"
 
 import * as React from "react"
@@ -51,14 +52,20 @@ export function CreateEmptyGroupsDialog({ isOpen, onClose, onSuccess, initialCou
     if (!isOpen) return
     ;(async () => {
       const list = await CourseService.getCourses()
-      setCourses(list)
-      // Ưu tiên giá trị truyền từ ngoài nếu có
-      if (initialCourseId) {
+      // Lọc bỏ các khóa học Inactive
+      const activeList = (list || []).filter(c => String(c.status || 'Active').toLowerCase() !== 'inactive')
+      setCourses(activeList)
+      // Ưu tiên giá trị truyền từ ngoài nếu có (và hợp lệ trong danh sách Active)
+      if (initialCourseId && activeList.some(c => c.courseId === initialCourseId)) {
         setSelectedCourseId(initialCourseId)
-        setSelectedCourseCode(initialCourseCode || (list.find(c => c.courseId === initialCourseId)?.courseCode || ""))
-      } else if (list.length > 0) {
-        setSelectedCourseId(list[0].courseId)
-        setSelectedCourseCode(list[0].courseCode)
+        setSelectedCourseCode(initialCourseCode || (activeList.find(c => c.courseId === initialCourseId)?.courseCode || ""))
+      } else if (activeList.length > 0) {
+        setSelectedCourseId(activeList[0].courseId)
+        setSelectedCourseCode(activeList[0].courseCode)
+      } else {
+        // Không có khóa học Active
+        setSelectedCourseId("")
+        setSelectedCourseCode("")
       }
     })()
   }, [isOpen, initialCourseId, initialCourseCode])
@@ -193,18 +200,28 @@ export function CreateEmptyGroupsDialog({ isOpen, onClose, onSuccess, initialCou
       const vals = form.getValues()
       const namesToCreate = finalNames.map(n => n.final)
       let createdCount = 0
-      const parts = await chunked(namesToCreate, 6)
+      const parts = await chunked(namesToCreate, 3)
       for (const part of parts) {
         const promises = part.map(async (name) => {
+          let created: any = null
           try {
-            const g = await GroupService.createGroup({ name, courseId: selectedCourseId })
-            await GroupService.updateGroup(g.groupId, { name, courseId: selectedCourseId, maxMembers: vals.maxMembers })
+            created = await GroupService.createGroup({ name, courseId: selectedCourseId })
+            // Đếm ngay khi tạo thành công, ngay cả khi update sau đó thất bại
             createdCount++
           } catch (err: any) {
             console.warn("Create group failed:", name, err?.message || err)
+            return
+          }
+          // Cố gắng cập nhật thông tin phụ, nhưng không ảnh hưởng đến thống kê đã tạo
+          try {
+            await GroupService.updateGroup(created.groupId, { name, courseId: selectedCourseId, maxMembers: vals.maxMembers })
+          } catch (err: any) {
+            console.warn("Update group failed:", name, err?.message || err)
           }
         })
         await Promise.allSettled(promises)
+        // Short delay between batches to avoid overwhelming backend
+        await new Promise(r => setTimeout(r, 200))
       }
       toast({ title: "Tạo nhóm trống thành công", description: `Đã tạo ${createdCount} nhóm cho môn ${selectedCourseCode}.` })
       onSuccess?.(createdCount)
