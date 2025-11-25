@@ -6,11 +6,13 @@ import type {
 
 import {
   GroupMemberService as GeneratedGroupMemberService, 
+  GroupService as GeneratedGroupService,
   ApiError,
   OpenAPI,
   type Group as ApiGroup,
   type GroupMember as ApiGroupMember,
   type CreateGroupMemberViewModel,
+  TopicService,
 } from "@/lib/api/generated";
 import type { UpdateGroupViewModel } from "@/lib/api/generated/models/UpdateGroupViewModel";
 
@@ -34,7 +36,8 @@ const mapApiGroupToFeGroup = (g: any): FeGroup => {
   if (!g) return null as any;
   
   const rawMembers = (g.groupMembers || g.members || []) as any[];
-  const feMembers: GroupMember[] = rawMembers.map((gm: any) => {
+  const leaderIdRaw = g.leaderId || (g.leader?.id ?? "");
+  let feMembers: GroupMember[] = rawMembers.map((gm: any) => {
     const student = gm.user || gm.student;
     const fullName = student ? getUserFullName(student) : (gm.username || gm.email || "Thành viên");
     return {
@@ -57,6 +60,10 @@ const mapApiGroupToFeGroup = (g: any): FeGroup => {
     };
   });
 
+  if (leaderIdRaw) {
+    feMembers = feMembers.map(m => m.userId === leaderIdRaw ? { ...m, role: 'leader' } : m);
+  }
+
   const feMajors = Array.from(new Set(feMembers.map(m => m.major))).filter(Boolean) as ("SE" | "SS")[];
 
   return {
@@ -66,8 +73,8 @@ const mapApiGroupToFeGroup = (g: any): FeGroup => {
     courseCode: g.course?.courseCode || g.courseCode || "N/A", 
     memberCount: (g.countMembers ?? undefined) !== undefined ? (g.countMembers ?? 0) : feMembers.length || 0,
     maxMembers: g.maxMembers || 6,
-    leaderName: getUserFullName(g.leader), 
-    leaderId: g.leaderId || "",
+    leaderName: (feMembers.find(m => m.userId === (g.leaderId || (g.leader?.id ?? "")))?.fullName) || getUserFullName(g.leader), 
+    leaderId: g.leaderId || (g.leader?.id ?? ""),
     status: (g.status as FeGroup['status']) || 'open',
     majors: feMajors, 
     createdDate: g.createdAt || "", 
@@ -232,12 +239,21 @@ export class GroupService {
       } = {
         name: update.name,
         courseId: update.courseId,
+        topicId: (update as any)?.topicId as any,
         maxMembers: update.maxMembers as any,
         startDate: update.startDate as any,
         endDate: update.endDate as any,
         leaderId: update.leaderId as any,
         status: update.status as any,
       };
+      if (!requestBody.courseId) {
+        try {
+          const current = await this.getGroupById(id);
+          if (current?.courseId) {
+            requestBody.courseId = current.courseId as any;
+          }
+        } catch {}
+      }
       if (!requestBody.name) {
         try {
           const current = await this.getGroupById(id);
@@ -259,11 +275,20 @@ export class GroupService {
             if (raw.ok) {
               const currentRaw = await raw.json();
               const currentTopicId = currentRaw?.topicId || currentRaw?.topic?.id || null;
-              if (currentTopicId) {
+              let useTopicId = currentTopicId;
+              if (!useTopicId) {
+                try {
+                  const topics = await TopicService.getApiTopic();
+                  const arr = Array.isArray(topics) ? topics : [];
+                  const preferred = arr.find((t: any) => String(t?.topicName || '').toLowerCase() === 'exe_grouping');
+                  useTopicId = preferred?.id || arr[0]?.id;
+                } catch {}
+              }
+              if (useTopicId) {
                 const retryRes = await fetch(`/api/proxy/Group/UpdateGroupBy/${id}`, {
                   method: 'PUT',
                   headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ ...requestBody, topicId: currentTopicId }),
+                  body: JSON.stringify({ ...requestBody, topicId: useTopicId }),
                 });
                 if (retryRes.ok) {
                   const updated2 = await retryRes.json();

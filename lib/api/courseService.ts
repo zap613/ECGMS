@@ -41,9 +41,8 @@ export class CourseService {
   // GET /api/Course
   static async getCourses(): Promise<Course[]> {
     try {
-      console.log("[CourseService] Fetching courses via proxy...");
       const ts = Date.now();
-      const res = await fetch(`/api/proxy/Course/GetListCourses?PageNumber=1&PageSize=1000&_t=${ts}` , {
+      const res = await fetch(`/api/proxy/Course/GetListCourses?PageNumber=1&PageSize=1000&_t=${ts}`, {
         cache: 'no-store',
         next: { revalidate: 0 },
         headers: {
@@ -57,11 +56,17 @@ export class CourseService {
         throw new Error(`List failed: ${res.status} ${res.statusText} ${text}`);
       }
       const response = await res.json();
-      const items = response.items || [];
+      const items = Array.isArray(response) ? response : (response.items || []);
       return items.map(mapApiCourseToFeCourse);
     } catch (error) {
-      console.error("Failed to fetch courses:", error);
-      return [];
+      try {
+        const response = await GeneratedCourseService.getApiCourse({ pageNumber: 1, pageSize: 1000 });
+        const items = Array.isArray(response as any) ? (response as any) : (response.items || []);
+        return items.map(mapApiCourseToFeCourse);
+      } catch (e) {
+        console.error("Failed to fetch courses:", e);
+        return [];
+      }
     }
   }
 

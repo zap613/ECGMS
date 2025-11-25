@@ -52,8 +52,7 @@ export function CreateEmptyGroupsDialog({ isOpen, onClose, onSuccess, initialCou
     if (!isOpen) return
     ;(async () => {
       const list = await CourseService.getCourses()
-      // Lọc bỏ các khóa học Inactive
-      const activeList = (list || []).filter(c => String(c.status || 'Active').toLowerCase() !== 'inactive')
+      const activeList = (list || []).filter(c => String(c.status || 'active').toLowerCase() !== 'inactive')
       setCourses(activeList)
       // Ưu tiên giá trị truyền từ ngoài nếu có (và hợp lệ trong danh sách Active)
       if (initialCourseId && activeList.some(c => c.courseId === initialCourseId)) {
