@@ -248,8 +248,7 @@ export default function GroupDetailPage() {
     const term = studentSearch.toLowerCase();
     return (
       s.userProfileViewModel.fullName.toLowerCase().includes(term) ||
-      s.user.email.toLowerCase().includes(term) ||
-      s.user.username.toLowerCase().includes(term)
+      s.user.email.toLowerCase().includes(term)
     );
   });
 
@@ -475,8 +474,7 @@ export default function GroupDetailPage() {
                   <option value="">-- Chọn sinh viên --</option>
                   {filteredStudentsForSelect.map((s) => (
                     <option key={s.studentId} value={s.studentId}>
-                      {s.userProfileViewModel.fullName} - {s.user.email} -{" "}
-                      {s.user.username}
+                      {s.userProfileViewModel.fullName} - {s.user.email}
                     </option>
                   ))}
                 </select>
