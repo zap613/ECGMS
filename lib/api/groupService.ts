@@ -12,6 +12,9 @@ import {
   type GroupMember as ApiGroupMember,
   type CreateGroupMemberViewModel,
 } from "@/lib/api/generated";
+
+// Export ApiGroup for use in pages
+export type { ApiGroup };
 import type { UpdateGroupViewModel } from "@/lib/api/generated/models/UpdateGroupViewModel";
 
 const IS_MOCK_MODE = false;
@@ -43,16 +46,28 @@ const mapApiGroupToFeGroup = (g: any): FeGroup => {
       avatarUrl: (student?.userProfile as any)?.avatarUrl || "/placeholder-user.jpg",
       role: (gm.roleInGroup === 'Leader' || gm.roleInGroup === 'Group Leader' || gm.isLeader) ? 'leader' : 'member',
       major: (student?.major?.majorCode || student?.majorCode || "SE") as "SE" | "SS",
+      // Add API compatibility fields
+      username: gm.username || student?.username || "",
+      email: gm.email || student?.email || "",
+      roleInGroup: gm.roleInGroup || (gm.role === 'leader' ? 'Leader' : 'Member'),
     };
   });
 
   const feMajors = Array.from(new Set(feMembers.map(m => m.major))).filter(Boolean) as ("SE" | "SS")[];
 
+  const groupName = g.name || "Chưa đặt tên";
+  const groupId = g.id || "";
   return {
-    groupId: g.id || "",
-    groupName: g.name || "Chưa đặt tên",
+    groupId,
+    // Add id as alias for backward compatibility
+    id: groupId,
+    groupName,
+    // Add aliases for API compatibility
+    name: groupName,
+    topicName: g.topicName || null,
     courseId: g.courseId || "", 
-    courseCode: g.course?.courseCode || g.courseCode || "N/A", 
+    courseCode: g.course?.courseCode || g.courseCode || "N/A",
+    courseName: g.courseName || g.course?.courseName || "N/A",
     memberCount: (g.countMembers ?? undefined) !== undefined ? (g.countMembers ?? 0) : feMembers.length || 0,
     maxMembers: g.maxMembers || 6,
     leaderName: getUserFullName(g.leader), 
@@ -132,21 +147,43 @@ export class GroupService {
 
   static async leaveGroup(groupId: string, userId: string): Promise<FeGroup | null> {
     try {
-      // Tìm membership theo groupId + userId
-      const memberships = await GeneratedGroupMemberService.getApiGroupMember({ groupId, userId });
-      const membership = Array.isArray(memberships) ? memberships[0] : undefined;
-      const membershipId = membership?.id;
-      if (!membershipId) {
-        // Không tìm thấy membership, có thể đã rời trước đó
-        console.warn("leaveGroup: No membership found for user in group", { groupId, userId });
-      } else {
-        await GeneratedGroupMemberService.deleteApiGroupMember({ id: membershipId });
-      }
+      // API DELETE /api/GroupMember/{id} expects userId directly, not membershipId
+      // The backend finds the GroupMember by UserId == id
+      await GeneratedGroupMemberService.deleteApiGroupMember({ id: userId });
+      
       // Lấy lại thông tin nhóm (có thể đã giảm memberCount)
       const updatedGroup = await this.getGroupById(groupId);
       return updatedGroup;
     } catch (err: any) {
       console.error("leaveGroup error:", err);
+      throw err;
+    }
+  }
+
+  static async removeMemberFromGroupViaApi(params: { memberId: string; groupId?: string }): Promise<FeGroup | null> {
+    try {
+      const { memberId, groupId: providedGroupId } = params;
+      
+      // If groupId is not provided, we need to find it
+      // For now, we'll require groupId to be passed
+      if (!providedGroupId) {
+        throw new Error("groupId is required to remove a member");
+      }
+
+      // Use leaveGroup which handles the removal logic
+      return await this.leaveGroup(providedGroupId, memberId);
+    } catch (err: any) {
+      console.error("removeMemberFromGroupViaApi error:", err);
+      throw err;
+    }
+  }
+
+  static async addMemberToGroupViaApi(params: { userId: string; groupId: string }): Promise<FeGroup> {
+    try {
+      const { userId, groupId } = params;
+      return await this.joinGroup(groupId, userId);
+    } catch (err: any) {
+      console.error("addMemberToGroupViaApi error:", err);
       throw err;
     }
   }

@@ -99,8 +99,12 @@ export interface GroupMember {
 export interface Group {
   groupId: string;
   groupName: string;
+  // API compatibility aliases
+  name?: string; // Alias for groupName
+  topicName?: string | null; // Topic name from API
   courseId: string;
   courseCode: string;
+  courseName?: string;
   memberCount: number;
   maxMembers: number;
   leaderName: string;
@@ -138,6 +142,12 @@ export interface GroupMember {
   userId: string;
   fullName: string;
   avatarUrl?: string; // Thêm avatar để hiển thị
+  role?: "leader" | "member";
+  major?: "SE" | "SS";
+  // API compatibility fields
+  username?: string;
+  email?: string;
+  roleInGroup?: string;
 }
 
 export interface GroupNeeds {

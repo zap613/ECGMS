@@ -27,7 +27,8 @@ import {
 } from "lucide-react";
 import { getCurrentUser } from "@/lib/utils/auth";
 import { useToast } from "@/lib/hooks/use-toast";
-import { GroupService, type ApiGroup } from "@/lib/api/groupService";
+import { GroupService } from "@/lib/api/groupService";
+import type { Group } from "@/lib/types";
 import type { StudentWithoutGroup } from "@/lib/types";
 import {
   Dialog,
@@ -42,7 +43,7 @@ export default function GroupDetailPage() {
   const router = useRouter();
   const params = useParams();
   const [user, setUser] = useState<any>(null);
-  const [group, setGroup] = useState<ApiGroup | null>(null);
+  const [group, setGroup] = useState<Group | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [addingMember, setAddingMember] = useState<boolean>(false);
   const [studentsWithoutGroup, setStudentsWithoutGroup] = useState<
@@ -156,7 +157,7 @@ export default function GroupDetailPage() {
       setAddingMember(true);
       await GroupService.addMemberToGroupViaApi({
         userId: selectedStudentId,
-        groupId: group.id,
+        groupId: group.groupId,
       });
 
       toast({
@@ -165,7 +166,7 @@ export default function GroupDetailPage() {
       });
 
       // Refresh group detail to see new member list
-      const updated = await GroupService.getGroupById(group.id);
+      const updated = await GroupService.getGroupById(group.groupId);
       if (updated) {
         setGroup(updated);
       }
@@ -238,7 +239,7 @@ export default function GroupDetailPage() {
   }
 
   const statusColor =
-    group.status === "active"
+    group.status === "open"
       ? "bg-green-100 text-green-700"
       : "bg-gray-100 text-gray-700";
 
@@ -334,7 +335,7 @@ export default function GroupDetailPage() {
               <p className="text-gray-600">Nhóm hiện chưa có thành viên nào.</p>
             ) : (
               <div className="space-y-4">
-                {group.members.map((member) => (
+                {group.members.map((member: any) => (
                   <Card
                     key={member.userId}
                     className="hover:shadow-md transition-shadow"
@@ -372,20 +373,31 @@ export default function GroupDetailPage() {
                                 }
 
                                 try {
-                                  await GroupService.removeMemberFromGroupViaApi(
-                                    { memberId: member.userId }
-                                  );
+                                  const groupId = params.groupId as string;
+                                  const updatedGroup =
+                                    await GroupService.removeMemberFromGroupViaApi(
+                                      {
+                                        memberId: member.userId,
+                                        groupId: groupId,
+                                      }
+                                    );
 
-                                  setGroup({
-                                    ...group,
-                                    members: group.members.filter(
-                                      (m) => m.userId !== member.userId
-                                    ),
-                                  });
+                                  if (updatedGroup) {
+                                    setGroup(updatedGroup);
+                                  } else {
+                                    // Fallback: reload the group
+                                    const reloadedGroup =
+                                      await GroupService.getGroupById(groupId);
+                                    if (reloadedGroup) {
+                                      setGroup(reloadedGroup);
+                                    }
+                                  }
 
                                   toast({
                                     title: "Đã xóa thành viên khỏi nhóm",
-                                    description: `${member.username} đã được xóa khỏi nhóm thành công`,
+                                    description: `${
+                                      member.username || member.fullName
+                                    } đã được xóa khỏi nhóm thành công`,
                                   });
                                 } catch (error) {
                                   console.error(
