@@ -160,7 +160,6 @@ export const mockGroups: Group[] = [
     createdDate: "2025-02-02",
     members: [],
     needs: [],
-  },
     approvalStatus: "rejected",
     rejectionReason:
       "Nhóm chỉ có 1 chuyên ngành (SE). Cần có ít nhất 2 chuyên ngành khác nhau.",
