@@ -481,6 +481,19 @@ export default function TasksPage() {
                       max={100}
                     />
                   </div>
+                  <div className="flex items-center">
+                    <button
+                      className="text-sm text-blue-600 hover:underline"
+                      onClick={() =>
+                        toast({
+                          title: "Xem chi tiết",
+                          description: task.taskName,
+                        })
+                      }
+                    >
+                      Xem chi tiết
+                    </button>
+                  </div>
                 </div>
               </div>
               <DialogFooter>

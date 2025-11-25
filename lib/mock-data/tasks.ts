@@ -1,8 +1,71 @@
-// Mock task data - Replace with API calls later
-import type { Task } from "@/lib/types"
+// lib/mock-data/tasks.ts
+import type { Task } from "@/lib/types";
 
 export const mockTasks: Task[] = [
   {
+    taskId: "T-0001",
+    taskName: "Thiết kế wireframe",
+    description: "Phác thảo bố cục trang chủ và trang chi tiết",
+    groupId: "G-EXE101-01",
+    groupName: "Nhóm EXE101-01",
+    assignedTo: "Nguyễn Văn A",
+    assignedToId: "S001",
+    status: "in-progress",
+    priority: "high",
+    dueDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
+    createdDate: new Date().toISOString(),
+  },
+  {
+    taskId: "T-0002",
+    taskName: "Cấu hình CI",
+    description: "Thiết lập pipeline build và test tự động",
+    groupId: "G-EXE101-01",
+    groupName: "Nhóm EXE101-01",
+    assignedTo: "Nguyễn Văn A",
+    assignedToId: "S001",
+    status: "pending",
+    priority: "medium",
+    dueDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
+    createdDate: new Date().toISOString(),
+  },
+  {
+    taskId: "T-0003",
+    taskName: "Viết tài liệu API",
+    description: "Hoàn thiện README và hướng dẫn tích hợp",
+    groupId: "G-EXE101-02",
+    groupName: "Nhóm EXE101-02",
+    assignedTo: "Trần Thị B",
+    assignedToId: "S002",
+    status: "completed",
+    priority: "low",
+    dueDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+    createdDate: new Date().toISOString(),
+  },
+  {
+    taskId: "T-0004",
+    taskName: "Lập kế hoạch sprint",
+    description: "Tạo backlog và ước lượng điểm cho sprint 1",
+    groupId: "G-EXE102-01",
+    groupName: "Nhóm EXE102-01",
+    assignedTo: "Nguyễn Văn A",
+    assignedToId: "S001",
+    status: "pending",
+    priority: "high",
+    dueDate: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString(),
+    createdDate: new Date().toISOString(),
+  },
+  {
+    taskId: "T-0005",
+    taskName: "Kiểm thử chức năng đăng nhập",
+    description: "Viết test case và báo cáo lỗi nếu có",
+    groupId: "G-EXE101-03",
+    groupName: "Nhóm EXE101-03",
+    assignedTo: "Lê Văn C",
+    assignedToId: "S003",
+    status: "in-progress",
+    priority: "medium",
+    dueDate: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000).toISOString(),
+    createdDate: new Date().toISOString(),
     taskId: "T001",
     taskName: "Phân tích yêu cầu dự án",
     description: "Phân tích và tài liệu hóa các yêu cầu chức năng và phi chức năng của dự án",
@@ -96,15 +159,17 @@ export const mockTasks: Task[] = [
     createdDate: "2025-02-20",
     maxScore: 100,
   },
-]
-
-// API placeholder functions
-export async function getTasks(): Promise<Task[]> {
-  // TODO: Replace with actual API call
-  return Promise.resolve(mockTasks)
-}
-
-export async function getTasksByGroup(groupId: string): Promise<Task[]> {
-  // TODO: Replace with actual API call
-  return Promise.resolve(mockTasks.filter((t) => t.groupId === groupId))
-}
+  {
+    taskId: "T-0006",
+    taskName: "Tối ưu performance trang danh sách",
+    description: "Sử dụng virtualization cho list dài",
+    groupId: "G-EXE102-02",
+    groupName: "Nhóm EXE102-02",
+    assignedTo: "Nguyễn Văn A",
+    assignedToId: "S001",
+    status: "pending",
+    priority: "low",
+    dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+    createdDate: new Date().toISOString(),
+  },
+];

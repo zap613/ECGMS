@@ -1,3 +1,4 @@
+// components/features/course/CourseCard.tsx
 // Course card component for displaying course information
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'

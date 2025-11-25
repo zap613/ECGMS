@@ -1,54 +1,42 @@
-// Authentication service - Replace mock data with actual API calls
+// Authentication service - wired to Next API routes
 import type { User, LoginForm } from "@/lib/types"
 
-// TODO: Replace with actual API endpoints
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'
-
 export class AuthService {
-  // Login user
-  static async login(credentials: LoginForm): Promise<{ user: User; token: string }> {
-    // TODO: Replace with actual API call
-    // const response = await fetch(`${API_BASE_URL}/auth/login`, {
-    //   method: 'POST',
-    //   headers: { 'Content-Type': 'application/json' },
-    //   body: JSON.stringify(credentials)
-    // })
-    // return response.json()
-    
-    // Mock implementation for now
-    if (credentials.password === "password123") {
-      const mockUsers = await import("@/lib/mock-data/auth")
-      const user = mockUsers.mockUsers.find(u => u.username === credentials.username)
-      if (user) {
-        return { user, token: "mock-jwt-token" }
-      }
+  // Login user via Next.js API route that forwards to backend
+  static async login(credentials: LoginForm): Promise<any> {
+    const payload = {
+      username: credentials.username,
+      password: credentials.password || "12345678", // default theo yêu cầu
+    };
+
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err?.error || 'Login failed');
     }
-    throw new Error("Invalid credentials")
+
+    // Response có thể chứa { token, user } hoặc chỉ user
+    const data = await res.json();
+    return data;
   }
 
-  // Logout user
+  // Logout user (optional: clear local state; server cookie sẽ hết hạn tự nhiên)
   static async logout(): Promise<void> {
-    // TODO: Replace with actual API call
-    // await fetch(`${API_BASE_URL}/auth/logout`, { method: 'POST' })
+    try {
+      localStorage.removeItem('token');
+      localStorage.removeItem('currentUser');
+    } catch {}
   }
 
-  // Get current user
+  // Get current user via server me route (nếu cần)
   static async getCurrentUser(): Promise<User | null> {
-    // TODO: Replace with actual API call
-    // const token = localStorage.getItem('token')
-    // if (!token) return null
-    // const response = await fetch(`${API_BASE_URL}/auth/me`, {
-    //   headers: { Authorization: `Bearer ${token}` }
-    // })
-    // return response.json()
-    
-    // Mock implementation for now
-    return null
-  }
-
-  // Refresh token
-  static async refreshToken(): Promise<string> {
-    // TODO: Replace with actual API call
-    throw new Error("Not implemented")
+    const res = await fetch('/api/auth/me', { cache: 'no-store' });
+    if (!res.ok) return null;
+    return res.json();
   }
 }

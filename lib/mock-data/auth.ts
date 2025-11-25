@@ -64,7 +64,14 @@ export const mockUsers: User[] = [
     skillSet: ["Frontend", "React", "TypeScript"],
     birthday: "2003-01-06",
     contactInfo: "0912345678",
-    groupId: "SUM25-C01-G01", // <-- ĐÃ CÓ NHÓM
+    groupId: null, // <-- CẬP NHẬT: CHƯA CÓ NHÓM
+    // CẬP NHẬT: Chưa pass EXE101, bắt đầu với 101
+    studentCourses: [
+      {
+        courseCode: "EXE101",
+        status: "in_progress",
+      },
+    ],
   },
   {
     userId: "S001",

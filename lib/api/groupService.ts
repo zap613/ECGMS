@@ -1,341 +1,248 @@
-// Group service - Replace mock data with actual API calls
-import type {
-  Group,
-  GroupMember,
-  GroupApprovalAction,
-  MemberChangeAction,
-  ProposeAdjustmentPayload,
-  TaskAssignmentForm,
-  ContributionScoreInput,
-} from "@/lib/types";
+// lib/api/groupService.ts
+import type { 
+  Group as FeGroup, 
+  GroupMember
+} from "@/lib/types"; 
 
-// Types that match the real Group API
-export interface ApiGroupMember {
-  userId: string;
-  roleInGroup: string;
-  username: string;
-  email: string;
-  joinedAt: string;
-  skillSet: string;
+import {
+  GroupMemberService as GeneratedGroupMemberService, 
+  ApiError,
+  OpenAPI,
+  type Group as ApiGroup,
+  type GroupMember as ApiGroupMember,
+  type CreateGroupMemberViewModel,
+} from "@/lib/api/generated";
+import type { UpdateGroupViewModel } from "@/lib/api/generated/models/UpdateGroupViewModel";
+
+const IS_MOCK_MODE = false;
+// Route tất cả gọi qua BFF Proxy để chuẩn hóa CORS và auth
+OpenAPI.BASE = '/api/proxy';
+
+// Helper lấy tên User an toàn
+const getUserFullName = (user: any): string => {
+    if (!user) return "N/A";
+    // SỬA LỖI: Ép kiểu 'any' để tránh lỗi TS khi truy cập property không có trong type
+    const u = user as any;
+    if (u.firstName || u.lastName) {
+        return `${u.firstName || ''} ${u.lastName || ''}`.trim();
+    }
+    return u.fullName || u.username || u.email || "Unknown User";
 }
 
-export interface ApiGroup {
-  id: string;
-  name: string;
-  courseId: string;
-  courseName: string;
-  topicId: string | null;
-  topicName: string | null;
-  maxMembers: number | null;
-  members: ApiGroupMember[];
-  status: string | null;
-}
+// --- ADAPTER ---
+const mapApiGroupToFeGroup = (g: any): FeGroup => {
+  if (!g) return null as any;
+  
+  const rawMembers = (g.groupMembers || g.members || []) as any[];
+  const feMembers: GroupMember[] = rawMembers.map((gm: any) => {
+    const student = gm.user || gm.student;
+    const fullName = student ? getUserFullName(student) : (gm.username || gm.email || "Thành viên");
+    return {
+      userId: gm.userId || gm.studentId || gm.id || "",
+      fullName,
+      avatarUrl: (student?.userProfile as any)?.avatarUrl || "/placeholder-user.jpg",
+      role: (gm.roleInGroup === 'Leader' || gm.roleInGroup === 'Group Leader' || gm.isLeader) ? 'leader' : 'member',
+      major: (student?.major?.majorCode || student?.majorCode || "SE") as "SE" | "SS",
+    };
+  });
 
-export interface AddGroupMemberPayload {
-  userId: string;
-  groupId: string;
-}
+  const feMajors = Array.from(new Set(feMembers.map(m => m.major))).filter(Boolean) as ("SE" | "SS")[];
 
-export interface RemoveGroupMemberPayload {
-  memberId: string;
-}
+  return {
+    groupId: g.id || "",
+    groupName: g.name || "Chưa đặt tên",
+    courseId: g.courseId || "", 
+    courseCode: g.course?.courseCode || g.courseCode || "N/A", 
+    memberCount: (g.countMembers ?? undefined) !== undefined ? (g.countMembers ?? 0) : feMembers.length || 0,
+    maxMembers: g.maxMembers || 6,
+    leaderName: getUserFullName(g.leader), 
+    leaderId: g.leaderId || "",
+    status: (g.status as FeGroup['status']) || 'open',
+    majors: feMajors, 
+    createdDate: g.createdAt || "", 
+    members: feMembers, 
+    needs: [], 
+    isLockedByRule: false, 
+  };
+};
 
 export class GroupService {
-  // Get all groups
-  static async getGroups(): Promise<ApiGroup[]> {
-    // Use Next.js API route as proxy to avoid CORS issues
-    const response = await fetch("/api/groups", {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      cache: "no-store",
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text().catch(() => "");
-      throw new Error(
-        errorText || `Failed to load groups. Status: ${response.status}`
-      );
+  static async getGroups(courseId?: string): Promise<FeGroup[]> {
+    try {
+      const ts = Date.now();
+      const res = await fetch(`/api/proxy/Group/GetAllGroups?_t=${ts}`, {
+        cache: 'no-store',
+        next: { revalidate: 0 },
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0',
+        },
+      });
+      if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        throw new Error(`GetAllGroups failed: ${res.status} ${res.statusText} ${text}`);
+      }
+      const groupsFromApi = await res.json();
+      let feGroups = (Array.isArray(groupsFromApi) ? groupsFromApi : []).map(mapApiGroupToFeGroup);
+      if (courseId) {
+        feGroups = feGroups.filter(g => g.courseId === courseId);
+      }
+      return feGroups;
+    } catch (err) {
+      console.error("Lỗi API getGroups:", err);
+      return []; 
     }
-
-    const data = (await response.json()) as ApiGroup[];
-    return data;
   }
 
-  // Get group by ID
-  static async getGroupById(groupId: string): Promise<ApiGroup | null> {
-    // Use Next.js API route as proxy to avoid CORS issues
-    const response = await fetch(`/api/groups/${groupId}`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      cache: "no-store",
-    });
-
-    if (response.status === 404) {
-      return null;
+  static async getGroupById(id: string): Promise<FeGroup | null> {
+    try {
+      const res = await fetch(`/api/proxy/Group/GetGroupBy/${id}`, {
+        cache: 'no-store',
+        next: { revalidate: 0 },
+      });
+      if (res.status === 404) return null;
+      if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        throw new Error(`GetGroupBy failed: ${res.status} ${res.statusText} ${text}`);
+      }
+      const groupFromApi = await res.json();
+      return mapApiGroupToFeGroup(groupFromApi);
+    } catch (err: any) {
+      console.error("Lỗi API getGroupById:", err);
+      throw err;
     }
-
-    if (!response.ok) {
-      const errorText = await response.text().catch(() => "");
-      throw new Error(
-        errorText || `Failed to load group detail. Status: ${response.status}`
-      );
-    }
-
-    const data = (await response.json()) as ApiGroup;
-    return data;
   }
 
-  // Add member from "students without group" list
-  static async addMemberToGroupViaApi(
-    payload: AddGroupMemberPayload
-  ): Promise<void> {
-    const response = await fetch("/api/group-member", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
-    });
+  static async joinGroup(groupId: string, userId: string): Promise<FeGroup> {
+    try {
+      const requestBody: CreateGroupMemberViewModel = { 
+        groupId: groupId, 
+        userId: userId 
+      };
+      await GeneratedGroupMemberService.postApiGroupMember({ requestBody });
+      const updatedGroup = await this.getGroupById(groupId);
+      if (!updatedGroup) throw new Error("Không thể lấy thông tin nhóm.");
+      return updatedGroup;
+    } catch (err: any) {
+      // Error handling...
+      throw err;
+    }
+  }
 
-    if (!response.ok) {
-      // Cố gắng parse JSON error từ API route
-      let errorMessage = "";
-      try {
-        const errorJson: any = await response.json();
-        if (errorJson) {
-          if (typeof errorJson.message === "string") {
-            errorMessage = errorJson.message;
-          } else if (typeof errorJson.error === "string") {
-            errorMessage = errorJson.error;
-          }
+  static async leaveGroup(groupId: string, userId: string): Promise<FeGroup | null> {
+    try {
+      // Tìm membership theo groupId + userId
+      const memberships = await GeneratedGroupMemberService.getApiGroupMember({ groupId, userId });
+      const membership = Array.isArray(memberships) ? memberships[0] : undefined;
+      const membershipId = membership?.id;
+      if (!membershipId) {
+        // Không tìm thấy membership, có thể đã rời trước đó
+        console.warn("leaveGroup: No membership found for user in group", { groupId, userId });
+      } else {
+        await GeneratedGroupMemberService.deleteApiGroupMember({ id: membershipId });
+      }
+      // Lấy lại thông tin nhóm (có thể đã giảm memberCount)
+      const updatedGroup = await this.getGroupById(groupId);
+      return updatedGroup;
+    } catch (err: any) {
+      console.error("leaveGroup error:", err);
+      throw err;
+    }
+  }
+
+  static async createGroup(data: { name: string, courseId: string }): Promise<FeGroup> {
+    try {
+      const res = await fetch(`/api/proxy/Group/CreateGroup`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        // Một số triển khai backend yêu cầu courseId không-null khi tạo Group
+        // Gửi kèm cả courseId để tránh lỗi 500 khi DB yêu cầu ràng buộc
+        body: JSON.stringify({ name: data.name, courseId: data.courseId }),
+      });
+      if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        throw new Error(`CreateGroup failed: ${res.status} ${res.statusText} ${text}`);
+      }
+      const createdGroup = await res.json();
+      // Nếu backend bỏ qua courseId ở bước tạo, đảm bảo cập nhật sau khi tạo
+      const gid = createdGroup?.id || createdGroup?.groupId;
+      const createdCourseId = createdGroup?.courseId;
+      if (gid && !createdCourseId && data.courseId) {
+        try {
+          await this.updateGroup(gid, { courseId: data.courseId });
+        } catch (e) {
+          console.warn("CreateGroup: fallback update courseId failed", e);
         }
-      } catch (parseError) {
-        // Nếu không parse được JSON, dùng message mặc định
-        console.warn("Could not parse error response:", parseError);
+      }
+      return mapApiGroupToFeGroup(createdGroup);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Không thể tạo nhóm mới.";
+      throw new Error(message);
+    }
+  }
+
+  static async updateGroup(id: string, update: Partial<{ name: string; courseId: string; maxMembers: number; startDate: string; endDate: string }>): Promise<FeGroup> {
+    try {
+      const requestBody: UpdateGroupViewModel = {
+        name: update.name,
+        courseId: update.courseId,
+        maxMembers: update.maxMembers as any,
+        startDate: update.startDate as any,
+        endDate: update.endDate as any,
+      };
+      const res = await fetch(`/api/proxy/Group/UpdateGroupBy/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody),
+      });
+      if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        throw new Error(`UpdateGroup failed: ${res.status} ${res.statusText} ${text}`);
+      }
+      const updated = await res.json();
+      return mapApiGroupToFeGroup(updated);
+    } catch (err) {
+      throw new Error("Không thể cập nhật nhóm.");
+    }
+  }
+
+  static async createEmptyGroups(params: { courseId: string; courseCode: string; count: number; maxMembers?: number }): Promise<FeGroup[]> {
+    const { courseId, courseCode, count, maxMembers } = params;
+    if (!courseId || !courseCode || !count || count <= 0) {
+      throw new Error("Thiếu thông tin course hoặc số lượng nhóm không hợp lệ.");
+    }
+    // Tránh trùng tên: lấy danh sách tên hiện có và tăng số thứ tự
+    const existing = await this.getGroups(courseId);
+    const existingNames = new Set((existing || []).map(g => (g.groupName || '').trim()));
+
+    const created: FeGroup[] = [];
+    let seqNumber = 1;
+    for (let i = 0; i < count; i++) {
+      // Tìm tên chưa tồn tại
+      let name = '';
+      while (true) {
+        const seq = String(seqNumber).padStart(2, '0');
+        const candidate = `Nhóm ${courseCode}-${seq}`;
+        if (!existingNames.has(candidate)) {
+          name = candidate;
+          break;
+        }
+        seqNumber++;
       }
 
-      // Nếu không có message từ API, dùng message mặc định dựa trên status code
-      if (!errorMessage) {
-        if (response.status === 400) {
-          errorMessage = "Nhóm đã đạt số lượng thành viên tối đa";
-        } else {
-          errorMessage = `Failed to add member to group. Status: ${response.status}`;
-        }
-      }
-
-      throw new Error(errorMessage);
+      // Tạo nhóm
+      const g = await this.createGroup({ name, courseId });
+      // Cập nhật thông tin phụ (ví dụ maxMembers)
+      const g2 = await this.updateGroup(g.groupId, {
+        name,
+        courseId,
+        maxMembers: maxMembers ?? g.maxMembers ?? 6,
+      });
+      created.push(g2);
+      existingNames.add(name);
+      seqNumber++;
     }
-  }
-
-  // Remove member from group via API (by memberId / userId from backend)
-  static async removeMemberFromGroupViaApi(
-    payload: RemoveGroupMemberPayload
-  ): Promise<void> {
-    const response = await fetch(`/api/group-member/${payload.memberId}`, {
-      method: "DELETE",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text().catch(() => "");
-      throw new Error(
-        errorText ||
-          `Failed to remove member from group. Status: ${response.status}`
-      );
-    }
-  }
-
-  // Get group members
-  static async getGroupMembers(groupId: string): Promise<GroupMember[]> {
-    // TODO: Replace with actual API call
-    // const response = await fetch(`${API_BASE_URL}/groups/${groupId}/members`)
-    // return response.json()
-
-    // Mock implementation for now
-    const mockGroups = await import("@/lib/mock-data/groups");
-    return mockGroups.mockGroupMembers.filter(
-      (m: GroupMember & { groupId?: string }) => m.groupId === groupId
-    );
-  }
-
-  // Get groups by course ID
-  static async getGroupsByCourseId(courseId: string): Promise<Group[]> {
-    // TODO: Replace with actual API call
-    // const response = await fetch(`${API_BASE_URL}/courses/${courseId}/groups`)
-    // return response.json()
-
-    // Mock implementation for now
-    const mockGroups = await import("@/lib/mock-data/groups");
-    return mockGroups.mockGroups.filter((g) => g.courseId === courseId);
-  }
-
-  // Approve group
-  static async approveGroup(
-    groupId: string,
-    approvedBy: string
-  ): Promise<void> {
-    // TODO: Replace with actual API call
-    // await fetch(`${API_BASE_URL}/groups/${groupId}/approve`, {
-    //   method: 'POST',
-    //   headers: { 'Content-Type': 'application/json' },
-    //   body: JSON.stringify({ approvedBy })
-    // })
-
-    // Mock implementation for now
-    console.log(`Mock: Approving group ${groupId} by ${approvedBy}`);
-  }
-
-  // Reject group
-  static async rejectGroup(
-    groupId: string,
-    reason: string,
-    rejectedBy: string
-  ): Promise<void> {
-    // TODO: Replace with actual API call
-    // await fetch(`${API_BASE_URL}/groups/${groupId}/reject`, {
-    //   method: 'POST',
-    //   headers: { 'Content-Type': 'application/json' },
-    //   body: JSON.stringify({ reason, rejectedBy })
-    // })
-
-    // Mock implementation for now
-    console.log(
-      `Mock: Rejecting group ${groupId} by ${rejectedBy}. Reason: ${reason}`
-    );
-  }
-
-  // Mark group ready
-  static async markGroupReady(
-    groupId: string,
-    ready: boolean,
-    lecturerId: string
-  ): Promise<void> {
-    console.log(`Mock: Mark group ${groupId} ready=${ready} by ${lecturerId}`);
-  }
-
-  // Add member (student without group) to a group with reason
-  static async addMember(action: MemberChangeAction): Promise<GroupMember> {
-    console.log(
-      `Mock: Add student ${action.studentId} to group ${action.groupId} by ${action.changedBy}. Reason=${action.reason}`
-    );
-    throw new Error("Not implemented");
-  }
-
-  // Remove member from a group with reason
-  static async removeMember(action: MemberChangeAction): Promise<void> {
-    console.log(
-      `Mock: Remove student ${action.studentId} from group ${action.groupId} by ${action.changedBy}. Reason=${action.reason}`
-    );
-  }
-
-  // Propose group adjustment
-  static async proposeAdjustment(
-    payload: ProposeAdjustmentPayload
-  ): Promise<void> {
-    console.log(
-      `Mock: Propose adjustment for group ${payload.groupId} by ${payload.proposedBy}. Proposal=${payload.proposal}`
-    );
-  }
-
-  // Assign task to group
-  static async assignTask(form: TaskAssignmentForm): Promise<void> {
-    console.log(
-      `Mock: Assign task '${form.taskName}' to ${form.assigneeUserId} in group ${form.groupId}`
-    );
-  }
-
-  // Set contribution score per member
-  static async setContributionScore(
-    input: ContributionScoreInput
-  ): Promise<void> {
-    console.log(
-      `Mock: Set contribution score ${input.score} for student ${input.studentId} in group ${input.groupId}`
-    );
-  }
-
-  // Get groups by lecturer
-  static async getGroupsByLecturer(lecturerId: string): Promise<Group[]> {
-    // TODO: Replace with actual API call
-    // const response = await fetch(`${API_BASE_URL}/lecturers/${lecturerId}/groups`)
-    // return response.json()
-
-    // Mock implementation for now
-    const mockGroups = await import("@/lib/mock-data/groups");
-    const mockCourses = await import("@/lib/mock-data/courses");
-    const courseIds = mockCourses.mockCourses
-      .filter((c) => c.lecturerId === lecturerId)
-      .map((c) => c.courseId);
-    return mockGroups.mockGroups.filter((g) => courseIds.includes(g.courseId));
-  }
-
-  // Create new group
-  static async createGroup(group: Omit<Group, "groupId">): Promise<Group> {
-    // TODO: Replace with actual API call
-    throw new Error("Not implemented");
-  }
-
-  // Update group
-  static async updateGroup(
-    groupId: string,
-    group: Partial<Group>
-  ): Promise<Group> {
-    // TODO: Replace with actual API call
-    throw new Error("Not implemented");
-  }
-
-  // Delete group
-  static async deleteGroup(groupId: string): Promise<void> {
-    // TODO: Replace with actual API call
-    throw new Error("Not implemented");
-  }
-
-  // Add member to group
-  static async addMemberToGroup(
-    groupId: string,
-    studentId: string
-  ): Promise<GroupMember> {
-    // TODO: Replace with actual API call
-    throw new Error("Not implemented");
-  }
-
-  // Remove member from group
-  static async removeMemberFromGroup(
-    groupId: string,
-    studentId: string
-  ): Promise<void> {
-    // TODO: Replace with actual API call
-    throw new Error("Not implemented");
-  }
-
-  // Export lecturer report
-  static async exportLecturerReport(
-    lecturerId: string,
-    format: "xlsx" | "csv"
-  ): Promise<Blob> {
-    // TODO: Replace with actual API call
-    // const response = await fetch(`${API_BASE_URL}/lecturers/${lecturerId}/reports?format=${format}`, {
-    //   method: 'GET',
-    // })
-    // return response.blob()
-
-    // Mock implementation for now
-    console.log(
-      `Mock: Exporting lecturer report for ${lecturerId} in ${format} format`
-    );
-
-    // Return mock file content
-    const content = `Report for lecturer ${lecturerId}\nGenerated at ${new Date().toISOString()}`;
-    return new Blob([content], {
-      type:
-        format === "csv"
-          ? "text/csv"
-          : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    });
+    return created;
   }
 }

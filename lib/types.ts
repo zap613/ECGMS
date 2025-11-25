@@ -1,6 +1,4 @@
-// lib/types.ts
-// Centralized type definitions for ECGMS
-// This file contains all TypeScript interfaces and types used throughout the application
+// lib/types.ts (Đã sửa lỗi typo và bổ sung)
 
 // ===== USER & AUTHENTICATION TYPES =====
 export interface User {
@@ -10,10 +8,16 @@ export interface User {
   email: string;
   role: "lecturer" | "student" | "admin";
   major?: "SS" | "SE";
-  skillSet?: string[];
+  skillSet?: string[] | string;
   birthday?: string;
   contactInfo?: string;
-  groupId?: string | null; // <-- THÊM DÒNG NÀY: null hoặc undefined nghĩa là chưa có nhóm
+  groupId?: string | null; 
+  // Bổ sung theo yêu cầu Profile
+  roleId?: string;
+  studentCourses?: any[]; // Tối thiểu để phục vụ điều kiện Passed EXE101
+  userProfile?: UserProfile;
+  groups?: any[];
+  notifications?: any[];
 }
 
 // ===== STUDENT WITHOUT GROUP TYPES =====
@@ -48,6 +52,40 @@ export interface StudentWithoutGroup {
 
 // ===== COURSE TYPES =====
 export interface Course {
+  courseId: string
+  courseCode: string
+  courseName: string
+  semester: string
+  year?: number 
+  lecturerId?: string 
+  description?: string
+  status?: "open" | "pending" | "closed" | string 
+  groupCount?: number
+  studentCount?: number
+  lecturerCount?: number
+  createdDate?: string // SỬA LỖI 8, 9
+  updatedDate?: string
+}
+
+// SỬA LỖI 10, 11: Định nghĩa GroupNeeds và GroupMember TRƯỚC Group
+export interface GroupNeeds {
+  major: "SE" | "SS";
+  count: number;
+}
+
+export interface GroupMember {
+  userId: string;
+  fullName: string;
+  avatarUrl?: string;
+  role: "leader" | "member"; 
+  major: "SE" | "SS";      
+
+  // Thuộc tính cũ (nếu có)
+  memberId?: string;
+  groupId?: string;
+  studentId?: string;
+  studentName?: string;
+  skillSet?: string[];
   courseId: string;
   courseCode: string;
   courseName: string;
@@ -64,12 +102,27 @@ export interface Group {
   courseId: string;
   courseCode: string;
   memberCount: number;
-  maxMembers: number; // Thêm số lượng thành viên tối đa
+  maxMembers: number; 
   leaderName: string;
   leaderId: string;
-  status: "open" | "lock" | "finalize" | "private"; // Cập nhật trạng thái
+  status: "open" | "lock" | "finalize" | "private";
   majors: ("SE" | "SS")[];
   createdDate: string;
+  members: GroupMember[]; 
+  needs: GroupNeeds[]; 
+  isLockedByRule?: boolean;
+}
+
+// (Các type còn lại giữ nguyên...)
+export interface GradeItem {
+  gradeItemId: string
+  courseId: string
+  courseCode: string
+  itemName: string
+  maxScore: number
+  weight: number 
+  type: "group" | "individual"
+  description?: string
   members: GroupMember[]; // Thêm danh sách thành viên
   needs: GroupNeeds[]; // Thêm nhu cầu tuyển dụng
   isLockedByRule?: boolean; // Thêm cờ cho business rule "lock nhóm khi có 3 TV"
@@ -178,7 +231,6 @@ export interface Checkpoint {
   description?: string;
 }
 
-// ===== TASK TYPES =====
 export interface Task {
   taskId: string;
   taskName: string;
@@ -204,6 +256,13 @@ export interface Task {
   gradedDate?: string;
 }
 
+export type UserRole = "lecturer" | "student" | "admin"
+export type Major = "SS" | "SE"
+export type GroupStatus = "active" | "inactive"
+export type GroupRole = "leader" | "member" | "secretary"
+export type TaskStatus = "pending" | "in-progress" | "completed"
+export type TaskPriority = "low" | "medium" | "high"
+export type GradeType = "group" | "individual"
 // ===== UTILITY TYPES =====
 export type UserRole = "lecturer" | "student" | "admin";
 export type Major = "SS" | "SE";
@@ -213,7 +272,6 @@ export type TaskStatus = "pending" | "in-progress" | "completed";
 export type TaskPriority = "low" | "medium" | "high";
 export type GradeType = "group" | "individual";
 
-// ===== API RESPONSE TYPES =====
 export interface ApiResponse<T> {
   data: T;
   message: string;
@@ -228,12 +286,40 @@ export interface PaginatedResponse<T> {
   totalPages: number;
 }
 
-// ===== FORM TYPES =====
 export interface LoginForm {
   username: string;
   password: string;
 }
 
+// ===== MAJOR TYPES =====
+export interface MajorItem {
+  id: string;
+  majorCode: string;
+  name: string;
+  description?: string;
+}
+
+// ===== USER PROFILE (tối giản theo yêu cầu) =====
+export interface UserProfile {
+  userId?: string;
+  majorId?: string;
+  fullName?: string;
+  gpa?: number;
+  bio?: string;
+  avatarUrl?: string;
+  status?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  studentCode?: string;
+  major?: {
+    id: string;
+    majorCode?: string;
+    majorName?: string;
+    description?: string;
+    createdAt?: string;
+    updatedAt?: string;
+  };
+}
 export interface CreateGroupForm {
   groupName: string;
   courseId: string;

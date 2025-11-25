@@ -1,13 +1,14 @@
-//  components/features/group/GroupCard.tsx
+// components/features/group/GroupCard.tsx (Đã sửa lỗi Props và Import)
 "use client"
 
-import type { Group } from "@/lib/types"
+// SỬA: Import Group từ lib/types.ts (camelCase)
+import type { Group } from "@/lib/types" 
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Users, Lock, LogIn, Send, Check } from "lucide-react"
+import { Users, Lock, LogIn, Send, Check, Loader2 } from "lucide-react"
 
 const statusConfig = {
   open: { text: "Đang mở", variant: "secondary", icon: <LogIn className="w-3 h-3" /> },
@@ -16,9 +17,27 @@ const statusConfig = {
   private: { text: "Riêng tư", variant: "outline", icon: <Lock className="w-3 h-3" /> },
 }
 
-export function GroupCard({ group }: { group: Group }) {
+// SỬA LỖI 5: Bổ sung props onJoin, onApply, isJoining
+interface GroupCardProps {
+  group: Group;
+  onJoin?: (groupId: string) => void;
+  onApply?: (groupId: string) => void;
+  isJoining?: boolean; 
+  disableJoin?: boolean;
+}
+
+export function GroupCard({ group, onJoin, onApply, isJoining = false, disableJoin = false }: GroupCardProps) {
+  // Vì 'group' là kiểu FeGroup (camelCase), nên mọi thứ ở đây đều đúng
   const { text, variant, icon } = statusConfig[group.status] || statusConfig.open
   const memberPercentage = (group.memberCount / group.maxMembers) * 100
+
+  const handleJoinClick = () => {
+    onJoin?.(group.groupId); // Thêm ? để tránh lỗi nếu không truyền
+  }
+
+  const handleApplyClick = () => {
+    onApply?.(group.groupId); // Thêm ? để tránh lỗi nếu không truyền
+  }
 
   return (
     <Card className="flex flex-col">
@@ -42,10 +61,11 @@ export function GroupCard({ group }: { group: Group }) {
             <Progress value={memberPercentage} />
           </div>
 
-          {group.needs.length > 0 && (
+          {/* needs có thể không tồn tại trên mock data, thêm ? */}
+          {group.needs?.length > 0 && (
             <div>
               <p className="text-xs font-semibold mb-2">Đang tìm kiếm:</p>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 {group.needs.map((need, index) => (
                   <Badge key={index} variant="outline">
                     {need.count} {need.major}
@@ -55,7 +75,7 @@ export function GroupCard({ group }: { group: Group }) {
             </div>
           )}
 
-          {group.members.length > 0 && (
+          {group.members?.length > 0 && (
             <div>
               <p className="text-xs font-semibold mb-2">Thành viên hiện tại:</p>
               <div className="flex -space-x-2">
@@ -76,8 +96,18 @@ export function GroupCard({ group }: { group: Group }) {
         </div>
       </CardContent>
       <CardFooter>
-        {group.status === "open" && <Button className="w-full">Tham gia ngay</Button>}
-        {group.status === "lock" && <Button variant="secondary" className="w-full">Nộp đơn ứng tuyển</Button>}
+        {group.status === "open" && (
+          <Button className="w-full" onClick={handleJoinClick} disabled={isJoining || disableJoin}>
+            {isJoining && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+            Tham gia ngay
+          </Button>
+        )}
+        {group.status === "lock" && (
+          <Button variant="secondary" className="w-full" onClick={handleApplyClick} disabled={isJoining || disableJoin}>
+             {isJoining && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+            Nộp đơn ứng tuyển
+          </Button>
+        )}
         {group.status === "finalize" && <Button disabled variant="outline" className="w-full">Nhóm đã chốt</Button>}
         {group.status === "private" && <Button disabled variant="outline" className="w-full">Chỉ dành cho thành viên được mời</Button>}
       </CardFooter>

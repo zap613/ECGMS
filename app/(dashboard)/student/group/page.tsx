@@ -1,111 +1,169 @@
-// app/(dashboard)/student/group/page.tsx
 "use client"
 
 import * as React from "react"
 import { useRouter } from "next/navigation"
 import { DashboardLayout } from "@/components/layouts/dashboard-layout"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Users, UserPlus, Settings, Filter, PlusCircle, LogOut } from "lucide-react"
-import { mockSummer2025Groups } from "@/lib/mock-data/summer2025-data"
-import { getCurrentUser } from "@/lib/utils/auth"
 import { GroupCard } from "@/components/features/group/GroupCard"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Button } from "@/components/ui/button"
+import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select"
+import { PlusCircle, Filter, Loader2 } from "lucide-react"
+// SỬA: Import Service và Type thay vì Mock Data
+import { GroupService } from "@/lib/api/groupService"
+import type { Group } from "@/lib/types"
+import { getCurrentUser, updateCurrentUser } from "@/lib/utils/auth"
+import ChangeMockData, { type ChangeMockDataProps } from "@/components/features/ChangeMockData"
+import { mockGroups } from "@/lib/mock-data/groups"
+import { useToast } from "@/components/ui/use-toast"
 
-export default function MyGroupPage() {
-  const router = useRouter();
-  // Lấy thông tin người dùng hiện tại từ localStorage
-  const currentUser = getCurrentUser();
+export default function FindGroupsPage() {
+  const router = useRouter()
+  const { toast } = useToast()
+  // State để lưu danh sách nhóm và trạng thái tải
+  const [groups, setGroups] = React.useState<Group[]>([]);
+  const [isLoading, setIsLoading] = React.useState(true);
+  const [selectedCourse, setSelectedCourse] = React.useState<string>("EXE101");
+  const [useMock, setUseMock] = React.useState<boolean>(() => {
+    if (typeof window === 'undefined') return true
+    try {
+      const v = localStorage.getItem('useMock')
+      return v ? v === 'true' : true
+    } catch { return true }
+  });
 
-  // Tìm thông tin nhóm của sinh viên dựa trên groupId
-  const myGroup = currentUser?.groupId
-    ? mockSummer2025Groups.find(group => group.groupId === currentUser.groupId)
-    : null;
-    
-  // --- GIAO DIỆN KHI SINH VIÊN CHƯA CÓ NHÓM ---
-  if (!myGroup) {
-    // Lọc các nhóm có thể tham gia trong một khóa học cụ thể để demo
-    const availableGroups = mockSummer2025Groups.filter(
-      group => group.courseId === "SUM25-C01" && // Hardcode 1 khóa học để demo
-               group.status !== 'private' && 
-               group.status !== 'finalize'
-    );
+  // Fetch dữ liệu từ API khi trang được tải
+  const loadGroups = React.useCallback(async () => {
+    setIsLoading(true)
+    try {
+      if (useMock) {
+        const data = mockGroups
+        const filtered = selectedCourse
+          ? data.filter(g => (g.courseCode || '').toUpperCase() === selectedCourse.toUpperCase())
+          : data
+        setGroups(filtered)
+      } else {
+        const data = await GroupService.getGroups();
+        const filtered = selectedCourse
+          ? data.filter(g => (g.courseCode || "").toUpperCase() === selectedCourse.toUpperCase())
+          : data;
+        setGroups(filtered);
+      }
+    } catch (error) {
+      console.error("Failed to fetch groups:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [useMock, selectedCourse])
 
-    return (
-      <DashboardLayout role="student">
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Tìm kiếm Nhóm</h1>
-              <p className="text-gray-600 mt-1">
-                Bạn chưa tham gia nhóm nào. Hãy tìm một nhóm phù hợp hoặc tạo nhóm của riêng bạn.
-              </p>
-            </div>
-            <div className="flex gap-2">
-              <Button variant="outline"><Filter className="w-4 h-4 mr-2"/>Lọc</Button>
-              <Button><PlusCircle className="w-4 h-4 mr-2"/>Tạo nhóm mới</Button>
-            </div>
-          </div>
+  React.useEffect(() => {
+    loadGroups()
+  }, [loadGroups])
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {availableGroups.map(group => (
-              <GroupCard key={group.groupId} group={group} />
-            ))}
-          </div>
-        </div>
-      </DashboardLayout>
-    );
-  }
+  // Kiểm tra tình trạng Passed của EXE101 để hiển thị EXE102
+  const [user, setUser] = React.useState(() => getCurrentUser() as any);
+  const hasPassedEXE101 = Array.isArray((user as any)?.studentCourses)
+    ? ((user as any).studentCourses as any[]).some(sc => (sc.courseCode || sc?.course?.courseCode) === "EXE101" && (sc.status || "").toLowerCase() === "passed")
+    : false;
 
-  // --- GIAO DIỆN KHI SINH VIÊN ĐÃ CÓ NHÓM ---
+  // Xử lý logic Join/Apply (Cần cập nhật logic thực tế)
+  const handleJoinGroup = async (groupId: string) => {
+    if (!user || user.role !== 'student') {
+      toast({ title: "Cần đăng nhập", description: "Vui lòng đăng nhập bằng tài khoản sinh viên." })
+      router.push('/login')
+      return
+    }
+    if ((user as any)?.groupId) {
+      toast({ title: "Bạn đã có nhóm", description: "Cần rời nhóm cũ trước khi tham gia nhóm mới." })
+      return
+    }
+    const g = groups.find(x => x.groupId === groupId)
+    if (!g) return
+    if (g.memberCount >= g.maxMembers) {
+      toast({ title: "Nhóm đã đủ", description: "Nhóm này đã đủ thành viên." })
+      return
+    }
+    try {
+      if (useMock) {
+        const newUser = { ...user, groupId };
+        updateCurrentUser(newUser)
+        setUser(newUser)
+        toast({ title: "Tham gia thành công (Mock)", description: `Bạn đã tham gia ${g.groupName}.` })
+        router.push(`/student/groups/${groupId}`)
+      } else {
+        const updated = await GroupService.joinGroup(groupId, (user as any).userId)
+        const newUser = { ...user, groupId: updated.groupId }
+        updateCurrentUser(newUser)
+        setUser(newUser)
+        toast({ title: "Tham gia thành công", description: `Bạn đã tham gia ${updated.groupName}.` })
+        router.push(`/student/groups/${updated.groupId}`)
+      }
+    } catch (err: any) {
+      console.error("JoinGroup error:", err)
+      toast({ title: "Lỗi", description: err?.message || "Không thể tham gia nhóm." })
+    }
+  };
+
+  const handleApplyToGroup = async (groupId: string) => {
+    console.log("Apply to group:", groupId);
+    alert("Đã nộp đơn (Mô phỏng).");
+  };
+
   return (
     <DashboardLayout role="student">
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Nhóm của tôi</h1>
-          <p className="text-gray-600 mt-1">Quản lý thông tin, thành viên và công việc của nhóm.</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Tìm kiếm Nhóm</h1>
+            <p className="text-gray-600 mt-1">
+              Tìm một nhóm phù hợp hoặc tạo nhóm của riêng bạn.
+            </p>
+          </div>
+          <div className="flex gap-2 items-center">
+            <Select value={selectedCourse} onValueChange={setSelectedCourse}>
+              <SelectTrigger className="w-40">
+                <SelectValue placeholder="Chọn môn" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="EXE101">EXE101</SelectItem>
+                {hasPassedEXE101 && <SelectItem value="EXE102">EXE102</SelectItem>}
+              </SelectContent>
+            </Select>
+            
+            <Button>
+                <PlusCircle className="w-4 h-4 mr-2"/>
+                Tạo nhóm mới
+            </Button>
+            <ChangeMockData
+              loading={isLoading}
+              onRefresh={loadGroups}
+              useMock={useMock}
+              setUseMock={setUseMock}
+            />
+          </div>
         </div>
 
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-2xl">{myGroup.groupName}</CardTitle>
-                <CardDescription>Thuộc khóa học: {myGroup.courseCode}</CardDescription>
-              </div>
-              <div className="flex gap-2">
-                  <Button variant="outline"><UserPlus className="w-4 h-4 mr-2"/>Mời thành viên</Button>
-                  <Button><Settings className="w-4 h-4 mr-2"/>Cài đặt nhóm</Button>
-                  <Button variant="destructive"><LogOut className="w-4 h-4 mr-2"/>Rời nhóm</Button>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <h3 className="font-semibold mb-4">Danh sách thành viên ({myGroup.memberCount}/{myGroup.maxMembers})</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {myGroup.members.map(member => (
-                <div key={member.userId} className="flex items-center gap-3 p-3 border rounded-lg bg-gray-50">
-                  <Avatar>
-                    <AvatarImage src={member.avatarUrl} />
-                    <AvatarFallback>{member.fullName.charAt(0)}</AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <p className="font-medium">{member.fullName}</p>
-                    <p className="text-xs text-muted-foreground">{member.userId}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-            
-            <div className="mt-8 border-t pt-6">
-                <h3 className="font-semibold mb-4">Công việc của nhóm</h3>
-                <div className="border rounded-lg p-8 text-center">
-                    <p className="text-muted-foreground">Chức năng quản lý công việc sẽ được hiển thị ở đây.</p>
-                </div>
-            </div>
-
-          </CardContent>
-        </Card>
+        {isLoading ? (
+          <div className="flex items-center justify-center h-64">
+            <Loader2 className="w-8 h-8 animate-spin text-gray-500" />
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {groups.length > 0 ? (
+                groups.map(group => (
+                    <GroupCard 
+                      key={group.groupId} 
+                      group={group} 
+                      onJoin={handleJoinGroup}
+                      onApply={handleApplyToGroup}
+                      disableJoin={Boolean((user as any)?.groupId)}
+                    />
+                ))
+              ) : (
+                <p className="col-span-full text-center text-gray-500 py-10">
+                  Chưa có nhóm nào được hiển thị.
+                </p>
+              )}
+          </div>
+        )}
       </div>
     </DashboardLayout>
   )

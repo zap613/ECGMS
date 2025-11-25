@@ -6,13 +6,19 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { useCurrentUser } from '@/lib/hooks/useCurrentUser'
+import { UserService } from '@/lib/api/generated/services/UserService'
+import { RoleService } from '@/lib/api/generated/services/RoleService'
 import { useRouter } from 'next/navigation'
+import { ApiError } from '@/lib/api/generated/core/ApiError'
+
+const STUDENT_ROLE_ID = '106c46d1-6ac9-413c-b883-ce67f2af6a01'
 
 export function LoginForm() {
-  const [username, setUsername] = useState('')
+  const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const { login, error } = useCurrentUser()
+  const { user } = useCurrentUser()
+  const [error, setError] = useState<string | null>(null)
   const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -20,10 +26,73 @@ export function LoginForm() {
     setIsLoading(true)
 
     try {
-      await login(username, password)
-      // Redirect based on user role
+      // Đăng nhập theo email bằng generated UserService (password để trống)
+      const rawUser = await UserService.getApiUserEmail({ email })
+      // Debug thực tế giá trị role
+      console.log('🔍 Raw User:', rawUser)
+      console.log('🔍 Role object:', rawUser?.role)
+      console.log('🔍 Role name raw:', rawUser?.role?.roleName)
+      console.log('🔍 RoleId:', rawUser?.roleId)
+
+      let roleName = (rawUser?.role?.roleName || '').toString().trim().toLowerCase()
+      console.log('🔍 Role name after lowercase:', roleName)
+      console.log('🔍 Is student by name?:', roleName === 'student')
+      // Fallback: nếu role null, thử lấy từ RoleService bằng roleId
+      if (!roleName && rawUser?.roleId) {
+        try {
+          const roleVm = await RoleService.getApiRole1({ id: rawUser.roleId })
+          roleName = (roleVm?.roleName || '').toString().trim().toLowerCase()
+        } catch (e) {
+          // bỏ qua nếu không lấy được role
+        }
+      }
+      const isStudentById = rawUser?.roleId === STUDENT_ROLE_ID
+      const isStudentByName = roleName === 'student'
+      const isStudent = isStudentById || isStudentByName
+      console.log('✅ isStudentById:', isStudentById, 'isStudentByName:', isStudentByName)
+      if (!isStudent) {
+        throw new Error('Chỉ sinh viên (Student) được phép đăng nhập')
+      }
+
+      const normalized = {
+        userId: rawUser?.id ?? '',
+        username: rawUser?.username || rawUser?.email || email,
+        fullName: rawUser?.userProfile?.fullName || rawUser?.username || rawUser?.email || email,
+        email: rawUser?.email || email,
+        role: 'student',
+        groupId: rawUser?.groups?.[0]?.id || rawUser?.groupMembers?.[0]?.groupId || null,
+        roleId: rawUser?.roleId,
+        skillSet: (rawUser?.skillSet ?? undefined) as any,
+        userProfile: rawUser?.userProfile as any,
+        studentCourses: (rawUser?.studentCourses ?? undefined) as any[],
+        groups: (rawUser?.groups ?? undefined) as any[],
+        notifications: (rawUser?.notifications ?? undefined) as any[],
+      }
+
+      try {
+        localStorage.setItem('currentUser', JSON.stringify(normalized))
+      } catch (e) {
+        console.warn('Failed to persist auth state', e)
+      }
+      setError(null)
+      // Redirect based on user role (đơn giản hóa về /dashboard)
       router.push('/dashboard')
     } catch (err) {
+      let msg = 'Lỗi đăng nhập'
+      if (err instanceof ApiError) {
+        if (err.status === 404) {
+          msg = 'Không tìm thấy tài khoản với email này'
+        } else if (err.status === 401) {
+          msg = 'Bạn không có quyền đăng nhập'
+        } else if (err.status >= 500) {
+          msg = 'Máy chủ gặp sự cố, vui lòng thử lại sau'
+        } else {
+          msg = `${err.status} ${err.statusText}`
+        }
+      } else if (err instanceof Error) {
+        msg = err.message
+      }
+      setError(msg)
       console.error('Login failed:', err)
     } finally {
       setIsLoading(false)
@@ -41,15 +110,15 @@ export function LoginForm() {
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label htmlFor="username" className="block text-sm font-medium mb-1">
-              Tên đăng nhập
+            <label htmlFor="email" className="block text-sm font-medium mb-1">
+              Email
             </label>
             <Input
-              id="username"
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              placeholder="Nhập tên đăng nhập"
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="Nhập email sinh viên"
               required
             />
           </div>
@@ -62,9 +131,9 @@ export function LoginForm() {
               id="password"
               type="password"
               value={password}
+              placeholder="Mật khẩu có thể để trống"
+              required={false}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Nhập mật khẩu"
-              required
             />
           </div>
 
@@ -85,11 +154,7 @@ export function LoginForm() {
         
         <div className="mt-4 text-sm text-gray-600">
           <p>Demo accounts:</p>
-          <ul className="list-disc list-inside space-y-1">
-            <li>lecturer1 / password123</li>
-            <li>student1 / password123</li>
-            <li>admin1 / password123</li>
-          </ul>
+          <div className="text-xs">Nhập email sinh viên (ví dụ: ...@fpt.edu.vn); mật khẩu để trống.</div>
         </div>
       </CardContent>
     </Card>
