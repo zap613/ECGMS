@@ -1,4 +1,3 @@
-// ECGMS-Copy/app/(dashboard)/lecturer/courses/[courseId]/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
