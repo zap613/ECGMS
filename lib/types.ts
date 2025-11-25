@@ -29,7 +29,7 @@ export interface Course {
   year?: number 
   lecturerId?: string 
   description?: string
-  status?: "open" | "pending" | "closed" | string 
+  status?: "Active" | "Inactive" | "open" | "pending" | "closed" | string 
   groupCount?: number
   studentCount?: number
   lecturerCount?: number

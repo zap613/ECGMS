@@ -22,6 +22,7 @@ import { mockUsers } from "@/lib/mock-data/auth"
 import { mockGroups } from "@/lib/mock-data/groups"
 import { EditGroupDialog } from "@/components/features/group/EditGroupDialog"
 import { LecturerCourseService, UserService } from "@/lib/api/generated"
+import { Badge } from "@/components/ui/badge"
 
 export default function AdminGroupsPage() {
   const { toast } = useToast()
@@ -162,10 +163,18 @@ export default function AdminGroupsPage() {
 
   // Map API group to table row
   const mapApiGroupToRow = React.useCallback((g: any) => {
-    const memberCount = (g.countMembers ?? 0) || (Array.isArray(g.groupMembers) ? g.groupMembers.length : (Array.isArray(g.members) ? g.members.length : 0))
-    const maxMembers = g.maxMembers ?? 6
+    const members = Array.isArray(g.groupMembers) ? g.groupMembers : (Array.isArray(g.members) ? g.members : [])
+    const memberCount = (g.countMembers ?? 0) || members.length
+    const maxMembers = g.maxMembers ?? 5
     const status = g.status || (memberCount >= maxMembers ? 'finalize' : (memberCount === 0 ? 'open' : 'open'))
     const lecturerName = courseLecturerName || '—'
+    const leader = members.find((m: any) => {
+      const role = (m.role || '').toLowerCase()
+      return role === 'leader' || m.isLeader === true || m.role === 'Leader'
+    })
+    const hasLeader = !!leader
+    const summary = `${hasLeader ? '1 Leader' : '0 Leader'} • ${hasLeader ? Math.max(memberCount - 1, 0) : memberCount} Members`
+    const isValid = hasLeader && memberCount === maxMembers
     return {
       id: g.id || g.groupId || '',
       name: g.name || g.groupName || 'Chưa đặt tên',
@@ -174,6 +183,10 @@ export default function AdminGroupsPage() {
       maxMembers,
       lecturerName,
       status,
+      members,
+      hasLeader,
+      summary,
+      isValid,
     }
   }, [courseLecturerName])
 
@@ -184,15 +197,31 @@ export default function AdminGroupsPage() {
       let rows: any[] = []
       if (useMock) {
         const list = mockGroups.filter(g => g.courseCode === courseCode)
-        rows = list.map(g => ({
-          id: g.groupId,
-          name: g.groupName,
-          courseCode: g.courseCode,
-          memberCount: g.memberCount ?? (Array.isArray(g.members) ? g.members.length : 0),
-          maxMembers: g.maxMembers ?? 6,
-          lecturerName: courseLecturerName || '—',
-          status: g.status || ((g.memberCount ?? 0) >= (g.maxMembers ?? 6) ? 'finalize' : ((g.memberCount ?? 0) === 0 ? 'open' : 'open')),
-        }))
+        rows = list.map(g => {
+          const members = Array.isArray(g.members) ? g.members : []
+          const memberCount = g.memberCount ?? members.length
+          const maxMembers = g.maxMembers ?? 5
+          const leader = members.find((m: any) => {
+            const role = (m.role || '').toLowerCase()
+            return role === 'leader' || m.isLeader === true || m.role === 'Leader'
+          })
+          const hasLeader = !!leader
+          const summary = `${hasLeader ? '1 Leader' : '0 Leader'} • ${hasLeader ? Math.max(memberCount - 1, 0) : memberCount} Members`
+          const isValid = hasLeader && memberCount === maxMembers
+          return {
+            id: g.groupId,
+            name: g.groupName,
+            courseCode: g.courseCode,
+            memberCount,
+            maxMembers,
+            lecturerName: courseLecturerName || '—',
+            status: g.status || (memberCount >= maxMembers ? 'finalize' : (memberCount === 0 ? 'open' : 'open')),
+            members,
+            hasLeader,
+            summary,
+            isValid,
+          }
+        })
       } else {
         const ts = Date.now()
         const res = await fetch(`/api/proxy/Group/GetGroupByCourseCode/${encodeURIComponent(courseCode)}?_t=${ts}`, {
@@ -262,6 +291,9 @@ export default function AdminGroupsPage() {
                   try {
                     await TeamAllocationService.postApiTeamAllocationAllocateTeams({ courseName: selectedCourseCode })
                     toast({ title: "Đã chạy phân bổ", description: `Thuật toán phân bổ cho ${selectedCourseCode} đã kích hoạt.` })
+                    // Reload dữ liệu nhóm để thấy kết quả phân vai
+                    await loadGroups(selectedCourseCode)
+                    await loadEmptyCount(selectedCourseCode)
                   } catch (err: any) {
                     console.error("Allocation error:", err)
                     toast({ title: "Lỗi", description: err?.message || "Không thể chạy phân bổ tự động." })
@@ -333,9 +365,22 @@ export default function AdminGroupsPage() {
                     .map(g => (
                       <TableRow key={g.id}>
                         <TableCell>{g.name}</TableCell>
-                        <TableCell>{g.memberCount}/{g.maxMembers}</TableCell>
+                        <TableCell>
+                          <div className="flex flex-col">
+                            <span>{g.memberCount}/{g.maxMembers}</span>
+                            <span className="text-xs text-gray-500">{g.summary ?? `${g.hasLeader ? '1 Leader' : '0 Leader'} • ${(g.hasLeader ? Math.max(g.memberCount - 1, 0) : g.memberCount)} Members`}</span>
+                          </div>
+                        </TableCell>
                         <TableCell>{g.lecturerName}</TableCell>
-                        <TableCell>{g.status}</TableCell>
+                        <TableCell>
+                          {(() => {
+                            const valid = g.isValid === true || (g.hasLeader && g.memberCount === g.maxMembers)
+                            const missingLeader = g.memberCount > 0 && !g.hasLeader
+                            if (valid) return <Badge className="bg-green-100 text-green-700">Valid</Badge>
+                            if (missingLeader) return <Badge className="bg-red-100 text-red-700">Missing Leader</Badge>
+                            return <Badge className="bg-yellow-100 text-yellow-700">Open</Badge>
+                          })()}
+                        </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
                             <Button

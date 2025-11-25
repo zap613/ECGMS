@@ -54,7 +54,8 @@ export async function getCoursesServerSide(): Promise<Course[]> {
       description: item.description ?? "",
       semester: "N/A",
       year: new Date().getFullYear(),
-      status: "open",
+      // Lấy đúng trạng thái từ BE (Active/Inactive); fallback Active nếu không có
+      status: item.status ?? "Active",
       createdDate: item.createdAt ?? item.createdDate ?? new Date().toISOString(),
       updatedDate: item.updatedAt ?? item.updatedDate ?? item.createdAt ?? item.createdDate ?? undefined,
       lecturerId: "",

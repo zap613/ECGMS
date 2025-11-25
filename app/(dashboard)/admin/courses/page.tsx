@@ -31,6 +31,9 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { CourseInitializationWizard } from "@/components/features/course/CourseInitializationWizard"
 import { CourseFormDialog } from "@/components/features/course/CourseFormDialog"
+import { Badge } from "@/components/ui/badge"
+import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select"
+import { useToast } from "@/components/ui/use-toast"
 
 // --- SỬA LỖI TẠI ĐÂY ---
 // Import từ Adapter (lib/api/courseService), KHÔNG PHẢI generated
@@ -46,6 +49,8 @@ export default function AdminCoursesPage() {
   const [isWizardOpen, setIsWizardOpen] = React.useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
   const [editingCourse, setEditingCourse] = React.useState<Course | null>(null);
+  const [statusFilter, setStatusFilter] = React.useState<string>("all");
+  const { toast } = useToast();
   const [useMock, setUseMock] = React.useState<boolean>(() => {
     if (typeof window === 'undefined') return true;
     const saved = localStorage.getItem('useMock');
@@ -76,22 +81,20 @@ export default function AdminCoursesPage() {
   };
 
   const handleDeleteCourse = async (courseId: string) => {
-    if (confirm("Bạn có chắc chắn muốn xóa khóa học này không?")) {
+    if (confirm("Hành động này sẽ chuyển khóa học sang trạng thái Inactive. Tiếp tục?")) {
       try {
-        // Xóa lạc quan ngay trên UI
-        setCourses(prev => prev.filter(c => c.courseId !== courseId));
-
-        // Gọi delete tới BE qua proxy
+        // Gọi delete tới BE qua proxy (Soft delete)
         await CourseService.deleteCourse(courseId);
 
-        // Refetch từ server để đảm bảo đồng bộ với BE
-        const refreshed = await getCoursesServerSide();
-        // Nếu BE vẫn trả về item vừa xóa (soft delete/chưa xóa), tiếp tục che item trên UI
-        const filtered = refreshed.filter(c => c.courseId !== courseId);
-        setCourses(filtered);
+        // Cập nhật trạng thái local: KHÔNG xóa dòng, đổi sang Inactive
+        setCourses(prev => prev.map(c =>
+          (c.courseId === courseId) ? { ...c, status: 'Inactive' } : c
+        ));
+
+        toast({ title: "Thành công", description: "Khóa học đã được chuyển sang trạng thái Inactive." });
       } catch (error) {
         console.error("Failed to delete course:", error);
-        alert("Xóa thất bại. Vui lòng thử lại.");
+        toast({ variant: "destructive", title: "Lỗi", description: "Không thể xóa (vô hiệu hóa) khóa học." });
       }
     }
   };
@@ -147,9 +150,22 @@ export default function AdminCoursesPage() {
           </div>
         </div>
        <ChangeMockData loading={isLoading} onRefresh={fetchCourses} useMock={useMock} setUseMock={setUseMock} />
-        <Card>
+       <Card>
            <CardHeader>
              <CardTitle>Course List ({courses.length})</CardTitle>
+              <div className="mt-2 w-56">
+                <Label>Lọc theo trạng thái</Label>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Tất cả" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tất cả</SelectItem>
+                    <SelectItem value="Active">Active</SelectItem>
+                    <SelectItem value="Inactive">Inactive</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
            </CardHeader>
            <CardContent>
              <Table>
@@ -158,18 +174,35 @@ export default function AdminCoursesPage() {
                    <TableHead>Course Code</TableHead>
                    <TableHead>Course Name</TableHead>
                    <TableHead>Description</TableHead>
+                   <TableHead>Status</TableHead>
                    <TableHead>Created Date</TableHead>
                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                </TableHeader>
                <TableBody>
                  {courses.length > 0 ? (
-                   courses.map((course) => (
+                   courses
+                     .filter((course) => {
+                       const s = normalizeCourseStatus((course as any).status);
+                       return statusFilter === 'all' ? true : s === statusFilter;
+                     })
+                     .map((course) => (
                      <TableRow key={course.courseId ?? (course as any).id ?? `${course.courseCode}-${course.courseName}` }>
                        <TableCell className="font-medium">{course.courseCode}</TableCell>
                        <TableCell>{course.courseName}</TableCell>
                         <TableCell className="max-w-xs truncate" title={course.description}>
                            {course.description}
+                        </TableCell>
+                        <TableCell>
+                          {(() => {
+                            const s = normalizeCourseStatus((course as any).status);
+                            const isActive = s === 'Active';
+                            return (
+                              <Badge className={isActive ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-700'}>
+                                {s}
+                              </Badge>
+                            );
+                          })()}
                         </TableCell>
                         <TableCell>
                           {(() => {
@@ -194,7 +227,7 @@ export default function AdminCoursesPage() {
                                 onClick={() => handleDeleteCourse(course.courseId)}
                               >
                                 <Trash2 className="mr-2 h-4 w-4" />
-                                Delete
+                                Deactivate
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -203,7 +236,7 @@ export default function AdminCoursesPage() {
                    ))
                  ) : (
                    <TableRow>
-                     <TableCell colSpan={5} className="text-center py-10 text-muted-foreground">
+                     <TableCell colSpan={6} className="text-center py-10 text-muted-foreground">
                        No courses yet.
                      </TableCell>
                    </TableRow>
@@ -218,6 +251,7 @@ export default function AdminCoursesPage() {
         isOpen={isWizardOpen}
         onClose={() => setIsWizardOpen(false)}
         onComplete={handleInitializationComplete}
+        existingCourses={courses}
       />
       
       {editingCourse && (
@@ -241,4 +275,15 @@ function formatDate(value: string) {
   } catch {
     return value;
   }
+}
+
+// Chuẩn hóa trạng thái từ API sang 'Active' | 'Inactive'
+function normalizeCourseStatus(status: any): 'Active' | 'Inactive' {
+  const s = (typeof status === 'string' ? status.toLowerCase() : status);
+  if (s === 1 || s === '1') return 'Active';
+  if (s === 0 || s === '0') return 'Inactive';
+  if (s === 'active' || s === 'open') return 'Active';
+  if (s === 'inactive' || s === 'closed') return 'Inactive';
+  // Mặc định: nếu không rõ, coi là Active để không ẩn nhầm
+  return 'Active';
 }

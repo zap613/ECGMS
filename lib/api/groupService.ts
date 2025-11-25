@@ -43,6 +43,9 @@ const mapApiGroupToFeGroup = (g: any): FeGroup => {
       avatarUrl: (student?.userProfile as any)?.avatarUrl || "/placeholder-user.jpg",
       role: (gm.roleInGroup === 'Leader' || gm.roleInGroup === 'Group Leader' || gm.isLeader) ? 'leader' : 'member',
       major: (student?.major?.majorCode || student?.majorCode || "SE") as "SE" | "SS",
+      // Map membership ID if available so UI can perform DELETE correctly
+      memberId: gm.id || gm.groupMemberId || gm.membershipId || gm.memberId,
+      groupId: gm.groupId || g.id || g.groupId,
     };
   });
 
@@ -182,14 +185,32 @@ export class GroupService {
     }
   }
 
-  static async updateGroup(id: string, update: Partial<{ name: string; courseId: string; maxMembers: number; startDate: string; endDate: string }>): Promise<FeGroup> {
+  static async updateGroup(
+    id: string,
+    update: Partial<{
+      name: string;
+      courseId: string;
+      maxMembers: number;
+      startDate: string;
+      endDate: string;
+      leaderId: string;
+      status: string;
+    }>
+  ): Promise<FeGroup> {
     try {
-      const requestBody: UpdateGroupViewModel = {
+      // Một số bản swagger không expose đầy đủ thuộc tính (leaderId, status) trong UpdateGroupViewModel.
+      // Gửi payload dạng object và để backend map các field có sẵn.
+      const requestBody: Partial<UpdateGroupViewModel> & {
+        leaderId?: string | null;
+        status?: string | null;
+      } = {
         name: update.name,
         courseId: update.courseId,
         maxMembers: update.maxMembers as any,
         startDate: update.startDate as any,
         endDate: update.endDate as any,
+        leaderId: update.leaderId as any,
+        status: update.status as any,
       };
       const res = await fetch(`/api/proxy/Group/UpdateGroupBy/${id}`, {
         method: 'PUT',
