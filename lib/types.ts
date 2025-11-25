@@ -8,10 +8,10 @@ export interface User {
   email: string;
   role: "lecturer" | "student" | "admin";
   major?: "SS" | "SE";
-  skillSet?: string[] | string;
+  skillSet?: string | null;
   birthday?: string;
   contactInfo?: string;
-  groupId?: string | null; 
+  groupId?: string | null;
   // Bổ sung theo yêu cầu Profile
   roleId?: string;
   studentCourses?: any[]; // Tối thiểu để phục vụ điều kiện Passed EXE101
@@ -52,19 +52,19 @@ export interface StudentWithoutGroup {
 
 // ===== COURSE TYPES =====
 export interface Course {
-  courseId: string
-  courseCode: string
-  courseName: string
-  semester: string
-  year?: number 
-  lecturerId?: string 
-  description?: string
-  status?: "open" | "pending" | "closed" | string 
-  groupCount?: number
-  studentCount?: number
-  lecturerCount?: number
-  createdDate?: string // SỬA LỖI 8, 9
-  updatedDate?: string
+  courseId: string;
+  courseCode: string;
+  courseName: string;
+  semester: string;
+  year?: number;
+  lecturerId?: string;
+  description?: string;
+  status?: "open" | "pending" | "closed" | string;
+  groupCount?: number;
+  studentCount?: number;
+  lecturerCount?: number;
+  createdDate?: string; // SỬA LỖI 8, 9
+  updatedDate?: string;
 }
 
 // SỬA LỖI 10, 11: Định nghĩa GroupNeeds và GroupMember TRƯỚC Group
@@ -77,8 +77,8 @@ export interface GroupMember {
   userId: string;
   fullName: string;
   avatarUrl?: string;
-  role: "leader" | "member"; 
-  major: "SE" | "SS";      
+  role: "leader" | "member";
+  major: "SE" | "SS";
 
   // Thuộc tính cũ (nếu có)
   memberId?: string;
@@ -102,27 +102,27 @@ export interface Group {
   courseId: string;
   courseCode: string;
   memberCount: number;
-  maxMembers: number; 
+  maxMembers: number;
   leaderName: string;
   leaderId: string;
   status: "open" | "lock" | "finalize" | "private";
   majors: ("SE" | "SS")[];
   createdDate: string;
-  members: GroupMember[]; 
-  needs: GroupNeeds[]; 
+  members: GroupMember[];
+  needs: GroupNeeds[];
   isLockedByRule?: boolean;
 }
 
 // (Các type còn lại giữ nguyên...)
 export interface GradeItem {
-  gradeItemId: string
-  courseId: string
-  courseCode: string
-  itemName: string
-  maxScore: number
-  weight: number 
-  type: "group" | "individual"
-  description?: string
+  gradeItemId: string;
+  courseId: string;
+  courseCode: string;
+  itemName: string;
+  maxScore: number;
+  weight: number;
+  type: "group" | "individual";
+  description?: string;
   members: GroupMember[]; // Thêm danh sách thành viên
   needs: GroupNeeds[]; // Thêm nhu cầu tuyển dụng
   isLockedByRule?: boolean; // Thêm cờ cho business rule "lock nhóm khi có 3 TV"
@@ -256,13 +256,13 @@ export interface Task {
   gradedDate?: string;
 }
 
-export type UserRole = "lecturer" | "student" | "admin"
-export type Major = "SS" | "SE"
-export type GroupStatus = "active" | "inactive"
-export type GroupRole = "leader" | "member" | "secretary"
-export type TaskStatus = "pending" | "in-progress" | "completed"
-export type TaskPriority = "low" | "medium" | "high"
-export type GradeType = "group" | "individual"
+export type UserRole = "lecturer" | "student" | "admin";
+export type Major = "SS" | "SE";
+export type GroupStatus = "active" | "inactive";
+export type GroupRole = "leader" | "member" | "secretary";
+export type TaskStatus = "pending" | "in-progress" | "completed";
+export type TaskPriority = "low" | "medium" | "high";
+export type GradeType = "group" | "individual";
 // ===== UTILITY TYPES =====
 export type UserRole = "lecturer" | "student" | "admin";
 export type Major = "SS" | "SE";

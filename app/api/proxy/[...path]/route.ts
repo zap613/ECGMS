@@ -20,7 +20,10 @@ async function handleProxy(request: Request, ctx: { params: any }) {
 
   // 3. Xây dựng URL đích đến Backend thật
   // Kết quả: http://140.245.42.78:5050/api/Course?page=1
-  const targetUrl = `${process.env.BACKEND_URL}/api/${path}${queryString ? `?${queryString}` : ""}`;
+  const BACKEND_URL = process.env.BACKEND_URL || "http://140.245.42.78:5050";
+  const targetUrl = `${BACKEND_URL}/api/${path}${queryString ? `?${queryString}` : ""}`;
+  
+  console.log(`[Proxy] ${request.method} ${path} -> ${targetUrl}`);
 
   try {
     // 4. Lấy Token từ Cookie (Server-side)
@@ -84,9 +87,26 @@ async function handleProxy(request: Request, ctx: { params: any }) {
       headers: proxyHeaders,
     });
 
-  } catch (error) {
-    console.error("[Proxy Error]", error);
-    return NextResponse.json({ error: "Proxy Internal Error" }, { status: 500 });
+  } catch (error: any) {
+    console.error("[Proxy Error] Full error:", error);
+    console.error("[Proxy Error] Error message:", error?.message);
+    console.error("[Proxy Error] Error stack:", error?.stack);
+    console.error("[Proxy Error] Target URL:", targetUrl);
+    console.error("[Proxy Error] Request method:", request.method);
+    
+    // Return more detailed error in development
+    const errorMessage = process.env.NODE_ENV === 'development' 
+      ? `Proxy Error: ${error?.message || 'Unknown error'}`
+      : "Proxy Internal Error";
+    
+    return NextResponse.json({ 
+      error: errorMessage,
+      details: process.env.NODE_ENV === 'development' ? {
+        message: error?.message,
+        targetUrl,
+        method: request.method,
+      } : undefined
+    }, { status: 500 });
   }
 }
 
