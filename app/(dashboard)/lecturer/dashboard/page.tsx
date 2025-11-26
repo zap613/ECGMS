@@ -83,7 +83,7 @@ export default function LecturerDashboard() {
   const loadDashboardData = async () => {
     try {
       setLoading(true);
-      
+
       // Load courses and groups in parallel
       const [coursesData, groupsData] = await Promise.all([
         CourseService.getCourses(),
@@ -174,14 +174,6 @@ export default function LecturerDashboard() {
   );
 
   const statsCards = [
-    {
-      title: "Tổng số khóa học",
-      value: stats.totalCourses,
-      icon: BookOpen,
-      color: "text-orange-600",
-      bgColor: "bg-orange-100",
-      description: "Khóa học đang phụ trách",
-    },
     {
       title: "Tổng số nhóm",
       value: stats.totalGroups,
@@ -312,7 +304,10 @@ export default function LecturerDashboard() {
             {/* Statistics Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {statsCards.map((stat) => (
-                <Card key={stat.title} className="hover:shadow-lg transition-shadow">
+                <Card
+                  key={stat.title}
+                  className="hover:shadow-lg transition-shadow"
+                >
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between">
                       <div className="flex-1">
@@ -396,7 +391,9 @@ export default function LecturerDashboard() {
                             <div className="flex items-center gap-4 text-sm text-gray-600">
                               <span className="flex items-center gap-1">
                                 <Users className="w-3 h-3" />
-                                {group.memberCount || group.members?.length || 0}
+                                {group.memberCount ||
+                                  group.members?.length ||
+                                  0}
                                 /{group.maxMembers || "?"} thành viên
                               </span>
                               {group.courseName && (
@@ -471,7 +468,9 @@ export default function LecturerDashboard() {
                               variant="outline"
                               size="sm"
                               onClick={() =>
-                                router.push(`/lecturer/groups?course=${course.courseId}`)
+                                router.push(
+                                  `/lecturer/groups?course=${course.courseId}`
+                                )
                               }
                             >
                               Xem
@@ -494,13 +493,16 @@ export default function LecturerDashboard() {
                     Phân bố kỹ năng trong các nhóm
                   </CardTitle>
                   <CardDescription>
-                    Heatmap thể hiện sự phân bố kỹ năng của sinh viên trong các nhóm
+                    Heatmap thể hiện sự phân bố kỹ năng của sinh viên trong các
+                    nhóm
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="flex flex-wrap gap-2">
                     {Object.entries(skillCount)
-                      .sort(([, a]: [string, any], [, b]: [string, any]) => b - a)
+                      .sort(
+                        ([, a]: [string, any], [, b]: [string, any]) => b - a
+                      )
                       .map(([skill, count]: [string, any]) => {
                         const numCount = typeof count === "number" ? count : 0;
                         const intensity = Math.min(numCount / maxSkillCount, 1);
@@ -525,7 +527,8 @@ export default function LecturerDashboard() {
             )}
 
             {/* Groups by Course */}
-            {groupsByCourse.filter((gbc) => gbc.groups.length > 0).length > 0 && (
+            {groupsByCourse.filter((gbc) => gbc.groups.length > 0).length >
+              0 && (
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -548,9 +551,12 @@ export default function LecturerDashboard() {
                         const groupsWithMembers = courseGroups.filter(
                           (g) => (g.members?.length || 0) > 0
                         ).length;
-                        const progress = courseGroups.length > 0
-                          ? Math.round((groupsWithMembers / courseGroups.length) * 100)
-                          : 0;
+                        const progress =
+                          courseGroups.length > 0
+                            ? Math.round(
+                                (groupsWithMembers / courseGroups.length) * 100
+                              )
+                            : 0;
 
                         return (
                           <div key={course.courseId} className="space-y-2">
@@ -560,10 +566,13 @@ export default function LecturerDashboard() {
                                   {course.courseName}
                                 </p>
                                 <p className="text-sm text-gray-600">
-                                  {courseGroups.length} nhóm • {totalStudents} sinh viên
+                                  {courseGroups.length} nhóm • {totalStudents}{" "}
+                                  sinh viên
                                 </p>
                               </div>
-                              <Badge variant="outline">{progress}% có thành viên</Badge>
+                              <Badge variant="outline">
+                                {progress}% có thành viên
+                              </Badge>
                             </div>
                             <Progress value={progress} className="h-2" />
                           </div>

@@ -274,7 +274,9 @@ export default function GroupsPage() {
                                 variant="outline"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  router.push(`/lecturer/groups/${group.groupId}`);
+                                  router.push(
+                                    `/lecturer/groups/${group.groupId}`
+                                  );
                                 }}
                               >
                                 Xem chi tiết
@@ -313,7 +315,7 @@ export default function GroupsPage() {
                         className="pl-9"
                       />
                     </div>
-                    <div className="flex items-center gap-2">
+                    {/* <div className="flex items-center gap-2">
                       <span className="text-sm text-gray-600">Trạng thái:</span>
                       <select
                         value={statusFilter}
@@ -328,7 +330,7 @@ export default function GroupsPage() {
                         <option value="inactive">Không active</option>
                         <option value="no-status">Chưa có trạng thái</option>
                       </select>
-                    </div>
+                    </div> */}
                   </div>
                 </div>
               </CardHeader>
@@ -418,7 +420,9 @@ export default function GroupsPage() {
                                 variant="outline"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  router.push(`/lecturer/groups/${group.groupId}`);
+                                  router.push(
+                                    `/lecturer/groups/${group.groupId}`
+                                  );
                                 }}
                               >
                                 Xem chi tiết
