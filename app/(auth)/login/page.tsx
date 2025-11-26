@@ -1,265 +1,222 @@
-// app/(auth)/login/page.tsx
-"use client"
+"use client";
 
-import type React from "react"
-
-import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { UserService } from "@/lib/api/generated/services/UserService"
-import { RoleService } from "@/lib/api/generated/services/RoleService"
-import { ApiError } from "@/lib/api/generated/core/ApiError"
-import type { User } from "@/lib/types"
-import ChangeMockData from "@/components/features/ChangeMockData"
-import { mockUsers } from "@/lib/mock-data/auth"
+import type React from "react";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Loader2, Mail, Lock, AlertCircle } from "lucide-react";
+import type { User } from "@/lib/types";
+import { decodeJWT, updateCurrentUser } from "@/lib/utils/auth";
 
 export default function LoginPage() {
-  const router = useRouter()
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [error, setError] = useState("")
-  const [loading, setLoading] = useState(false)
-  const [useMock, setUseMock] = useState<boolean>(() => {
-    if (typeof window === "undefined") return true
-    try {
-      const val = localStorage.getItem("useMock")
-      return val ? JSON.parse(val) : true
-    } catch {
-      return true
-    }
-  })
-  const [allowAllRoles, setAllowAllRoles] = useState<boolean>(() => {
-    if (typeof window === "undefined") return false
-    try {
-      const val = localStorage.getItem("allowAllRoles")
-      return val ? JSON.parse(val) : false
-    } catch {
-      return false
-    }
-  })
-
-  useEffect(() => {
-    try {
-      localStorage.setItem("useMock", JSON.stringify(useMock))
-    } catch {}
-  }, [useMock])
-  useEffect(() => {
-    try {
-      localStorage.setItem("allowAllRoles", JSON.stringify(allowAllRoles))
-    } catch {}
-  }, [allowAllRoles])
+  const router = useRouter();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError("")
-    setLoading(true)
+    e.preventDefault();
+    setError("");
+    setLoading(true);
 
     try {
-      let rawUser: any = null
-      if (useMock) {
-        rawUser = mockUsers.find(
-          (u) => (u.email || "").toLowerCase() === email.toLowerCase()
-        )
-        if (!rawUser) {
-          throw new Error("Không tìm thấy tài khoản với email này (mock)")
-        }
-      } else {
-        // Đăng nhập theo email (password để trống do passwordHash=null)
-        try {
-          const res = await fetch(`/api/proxy/api/User/email/${encodeURIComponent(email)}`, { cache: 'no-store', headers: { accept: 'text/plain' } })
-          if (res.ok) {
-            rawUser = await res.json()
-          } else if (res.status < 500) {
-            rawUser = await UserService.getApiUserEmail({ email })
-          } else {
-            throw new Error('Máy chủ gặp sự cố, vui lòng thử lại sau')
-          }
-        } catch (e) {
-          rawUser = await UserService.getApiUserEmail({ email })
-        }
-      }
-      // Debug giá trị thực tế
-      console.log('🔍 Raw User:', rawUser)
-      console.log('🔍 Role object:', rawUser?.role)
-      console.log('🔍 Role name raw:', rawUser?.role?.roleName)
-      console.log('🔍 RoleId:', rawUser?.roleId)
-      const token = null
+      const requestBody = {
+        email: email,
+        password: password || "",
+      };
 
-      // Chuẩn hóa về kiểu User tối thiểu cho UI
-      const normalized: User = useMock
-        ? {
-            userId: rawUser.userId || rawUser.id || "",
-            username: rawUser.username || rawUser.email || email,
-            fullName:
-              rawUser.fullName || rawUser.username || rawUser.email || email,
-            email: rawUser.email || email,
-            role: (rawUser.role as any) || ("student" as any),
-            major: rawUser.major,
-            skillSet: rawUser.skillSet,
-            birthday: rawUser.birthday,
-            contactInfo: rawUser.contactInfo,
-            groupId: rawUser.groupId ?? null,
-          }
-        : {
-            userId: rawUser?.id ?? "",
-            username: rawUser?.username || rawUser?.email || email,
-            fullName:
-              rawUser?.userProfile?.fullName ||
-              rawUser?.username ||
-              rawUser?.email ||
-              email,
-            email: rawUser?.email || email,
-            role: "student" as any,
-            groupId:
-              rawUser?.groups?.[0]?.id || rawUser?.groupMembers?.[0]?.groupId || null,
-            roleId: rawUser?.roleId,
-            skillSet: (rawUser?.skillSet ?? undefined) as any,
-            userProfile: rawUser?.userProfile as any,
-            studentCourses: (rawUser?.studentCourses ?? undefined) as any[],
-            groups: (rawUser?.groups ?? undefined) as any[],
-            notifications: (rawUser?.notifications ?? undefined) as any[],
-          }
+      console.log("[v0] Sending login request:", requestBody);
 
-      // Lưu localStorage để UI đọc
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(requestBody),
+      });
+
+      console.log("[v0] Response status:", response.status);
+      console.log("[v0] Response ok:", response.ok);
+
+      let responseData: any;
       try {
-        if (token) localStorage.setItem("token", token)
-        localStorage.setItem("currentUser", JSON.stringify(normalized))
+        responseData = await response.json();
+        console.log("[v0] Response data:", {
+          token: responseData.token ? "✓" : "✗",
+          keys: Object.keys(responseData),
+        });
+      } catch (parseError) {
+        console.error("[v0] Failed to parse response:", parseError);
+        throw new Error("Phản hồi từ server không hợp lệ");
+      }
+
+      if (!response.ok) {
+        const errorMessage = responseData.error || "Đăng nhập thất bại";
+        console.error("[v0] Login failed:", errorMessage);
+        throw new Error(errorMessage);
+      }
+
+      const token = responseData.token;
+      const apiUser = responseData.user || {};
+
+      if (!token) {
+        console.error("[v0] No token in response:", responseData);
+        throw new Error("Không nhận được token từ server");
+      }
+
+      let userRole = "student";
+      try {
+        const decoded = decodeJWT(token);
+        if (decoded?.role) {
+          userRole = decoded.role.toLowerCase();
+        }
+        console.log("[v0] Decoded role:", userRole);
+      } catch (decodeErr) {
+        console.warn(
+          "[v0] Failed to decode JWT, using default role:",
+          decodeErr
+        );
+      }
+
+      // Store token
+      try {
+        localStorage.setItem("token", token);
+        console.log("[v0] Token stored in localStorage");
       } catch (err) {
-        console.warn("Failed to persist auth state", err)
+        console.warn("[v0] Failed to store token:", err);
       }
 
-      // Chỉ cho phép Student đăng nhập theo yêu cầu
-      const STUDENT_ROLE_ID = '106c46d1-6ac9-413c-b883-ce67f2af6a01'
-      let roleName = useMock
-        ? (normalized.role || "").toString().trim().toLowerCase()
-        : (rawUser?.role?.roleName || "").toString().trim().toLowerCase()
-      if (!roleName && !useMock && rawUser?.roleId) {
-        try {
-          const roleVm = await RoleService.getApiRole1({ id: rawUser.roleId })
-          roleName = (roleVm?.roleName || "").toString().trim().toLowerCase()
-        } catch {}
-      }
-      const isStudentById = rawUser?.roleId === STUDENT_ROLE_ID
-      const isStudentByName = roleName === 'student'
-      const isAdmin = roleName === 'admin'
-      const isLecturer = roleName === 'lecturer'
-      console.log('✅ isStudentById:', isStudentById, 'isStudentByName:', isStudentByName)
-      if (!allowAllRoles && !(isStudentById || isStudentByName)) {
-        throw new Error("Chỉ sinh viên (Student) được phép đăng nhập")
-      }
+      // Normalize user data
+      const normalized: User = {
+        userId: apiUser.id || apiUser.userId || "",
+        username: apiUser.username || email,
+        fullName: apiUser.username || email,
+        email: apiUser.email || email,
+        role: (userRole as "lecturer" | "student" | "admin") || "student",
+        skillSet: apiUser.skillSet,
+      };
 
-      // Redirect theo role (student)
-      // Với API, cập nhật normalized.role theo roleName thực tế
-      const finalNormalized: User = useMock ? normalized : { ...normalized, role: (roleName || normalized.role) as any }
-      const role = finalNormalized.role as any
-      // Cập nhật lại localStorage với role chính xác
-      try {
-        localStorage.setItem("currentUser", JSON.stringify(finalNormalized))
-      } catch {}
-      if (role === "student") {
-        router.push("/student/dashboard")
-      } else if (role === "lecturer") {
-        router.push("/lecturer/dashboard")
-      } else if (role === "admin") {
-        router.push("/admin/dashboard")
+      console.log("[v0] User normalized:", normalized);
+      updateCurrentUser(normalized);
+
+      // Redirect based on role
+      console.log("[v0] Redirecting to:", `/${userRole}/dashboard`);
+      if (userRole === "admin") {
+        router.push("/admin/dashboard");
+      } else if (userRole === "lecturer") {
+        router.push("/lecturer/dashboard");
       } else {
-        router.push("/dashboard")
+        router.push("/student/dashboard");
       }
     } catch (err: any) {
-      let msg = 'Lỗi đăng nhập'
-      if (err instanceof ApiError) {
-        if (err.status === 404) {
-          msg = 'Không tìm thấy tài khoản với email này'
-        } else if (err.status === 401) {
-          msg = 'Bạn không có quyền đăng nhập'
-        } else if (err.status >= 500) {
-          msg = 'Máy chủ gặp sự cố, vui lòng thử lại sau'
-        } else {
-          msg = `${err.status} ${err.statusText}`
-        }
-      } else if (err?.message) {
-        msg = err.message
+      let msg = "Lỗi đăng nhập";
+      if (err?.message) {
+        msg = err.message;
       }
-      setError(msg)
-      console.error("Login failed:", err)
+      console.error("[v0] Login error:", err);
+      setError(msg);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
-
-  const refreshLogin = async () => {
-    setLoading(true)
-    try {
-      setError("")
-      // Optional: clear inputs to simulate refresh
-      // setEmail("")
-      // setPassword("")
-    } finally {
-      setLoading(false)
-    }
-  }
+  };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-orange-50 to-blue-50">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-4 text-center">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-orange-50 via-white to-blue-50 p-4">
+      <Card className="w-full max-w-md shadow-xl border-0">
+        <CardHeader className="space-y-6 text-center pb-8">
           <div className="flex justify-center">
-            <div className="w-20 h-20 bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl flex items-center justify-center">
-              <span className="text-3xl font-bold text-white">FU</span>
+            <div className="w-24 h-24 bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl flex items-center justify-center shadow-lg">
+              <span className="text-4xl font-bold text-white">FU</span>
             </div>
           </div>
-          <CardTitle className="text-2xl font-bold text-gray-900">FPT University</CardTitle>
-          <CardDescription className="text-base">EXE102 Project Management System</CardDescription>
+          <div className="space-y-2">
+            <CardTitle className="text-3xl font-bold text-gray-900">
+              FPT University
+            </CardTitle>
+            <CardDescription className="text-base text-gray-600">
+              EXE102 Project Management System
+            </CardDescription>
+          </div>
         </CardHeader>
-        <CardContent>
-          <form onSubmit={handleLogin} className="space-y-4">
+        <CardContent className="space-y-6">
+          <form onSubmit={handleLogin} className="space-y-5">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="Nhập email sinh viên"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="Mật khẩu có thể để trống"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required={false}
-              />
-            </div>
-            {error && <p className="text-sm text-red-600 bg-red-50 p-3 rounded-lg">{error}</p>}
-            <Button type="submit" disabled={loading} className="w-full bg-orange-500 hover:bg-orange-600">
-              Sign In
-            </Button>
-             <ChangeMockData
-               loading={loading}
-               onRefresh={refreshLogin}
-               useMock={useMock}
-               setUseMock={setUseMock}
-               allowAllRoles={allowAllRoles}
-               setAllowAllRoles={setAllowAllRoles}
-             />
-          </form>
-            <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-              <p className="text-sm font-semibold text-blue-900 mb-2">Hướng dẫn đăng nhập:</p>
-              <div className="space-y-1 text-xs text-blue-800">
-                <p>Nhập email sinh viên, mật khẩu có thể để trống.</p>
-                <p>Chỉ tài khoản có role Student được phép đăng nhập.</p>
+              <Label
+                htmlFor="email"
+                className="text-sm font-medium text-gray-700"
+              >
+                Email
+              </Label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <Input
+                  id="email"
+                  type="text"
+                  placeholder="Nhập email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="pl-10"
+                  required
+                  disabled={loading}
+                />
               </div>
             </div>
+            <div className="space-y-2">
+              <Label
+                htmlFor="password"
+                className="text-sm font-medium text-gray-700"
+              >
+                Mật khẩu
+              </Label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="Nhập mật khẩu"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="pl-10"
+                  disabled={loading}
+                />
+              </div>
+            </div>
+
+            {error && (
+              <Alert variant="destructive" className="border-red-200 bg-red-50">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription className="text-sm text-red-800">
+                  {error}
+                </AlertDescription>
+              </Alert>
+            )}
+
+            <Button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-orange-500 hover:bg-orange-600 text-white font-medium h-11 shadow-md transition-all"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Đang đăng nhập...
+                </>
+              ) : (
+                "Đăng nhập"
+              )}
+            </Button>
+          </form>
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }

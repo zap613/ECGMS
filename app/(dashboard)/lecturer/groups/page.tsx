@@ -68,14 +68,18 @@ export default function GroupsPage() {
           if (!acc[group.courseId]) {
             acc[group.courseId] = {
               courseId: group.courseId,
-              courseName: group.courseName,
+              courseName: group.courseName || group.courseCode || "N/A",
               groups: [],
             };
           }
           acc[group.courseId].groups.push(group);
           return acc;
         }, {})
-      ).sort((a, b) => a.courseName.localeCompare(b.courseName));
+      ).sort((a, b) => {
+        const nameA = a.courseName || "";
+        const nameB = b.courseName || "";
+        return nameA.localeCompare(nameB);
+      });
 
       setGroupsByCourse(grouped);
     } catch (error) {
@@ -228,10 +232,10 @@ export default function GroupsPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                       {course.groups.map((group) => (
                         <Card
-                          key={group.id}
+                          key={group.groupId}
                           className="hover:shadow-md transition-shadow cursor-pointer"
                           onClick={() =>
-                            router.push(`/lecturer/groups/${group.id}`)
+                            router.push(`/lecturer/groups/${group.groupId}`)
                           }
                         >
                           <CardHeader>
@@ -270,7 +274,7 @@ export default function GroupsPage() {
                                 variant="outline"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  router.push(`/lecturer/groups/${group.id}`);
+                                  router.push(`/lecturer/groups/${group.groupId}`);
                                 }}
                               >
                                 Xem chi tiết
@@ -364,10 +368,10 @@ export default function GroupsPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                       {paginatedGroups.map((group) => (
                         <Card
-                          key={group.id}
+                          key={group.groupId}
                           className="hover:shadow-md transition-shadow cursor-pointer"
                           onClick={() =>
-                            router.push(`/lecturer/groups/${group.id}`)
+                            router.push(`/lecturer/groups/${group.groupId}`)
                           }
                         >
                           <CardHeader>
@@ -414,7 +418,7 @@ export default function GroupsPage() {
                                 variant="outline"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  router.push(`/lecturer/groups/${group.id}`);
+                                  router.push(`/lecturer/groups/${group.groupId}`);
                                 }}
                               >
                                 Xem chi tiết

@@ -27,7 +27,8 @@ import {
 } from "lucide-react";
 import { getCurrentUser } from "@/lib/utils/auth";
 import { useToast } from "@/lib/hooks/use-toast";
-import { GroupService, type ApiGroup } from "@/lib/api/groupService";
+import { GroupService } from "@/lib/api/groupService";
+import type { Group } from "@/lib/types";
 import type { StudentWithoutGroup } from "@/lib/types";
 import {
   Dialog,
@@ -42,7 +43,7 @@ export default function GroupDetailPage() {
   const router = useRouter();
   const params = useParams();
   const [user, setUser] = useState<any>(null);
-  const [group, setGroup] = useState<ApiGroup | null>(null);
+  const [group, setGroup] = useState<Group | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [addingMember, setAddingMember] = useState<boolean>(false);
   const [studentsWithoutGroup, setStudentsWithoutGroup] = useState<
@@ -51,6 +52,13 @@ export default function GroupDetailPage() {
   const [studentSearch, setStudentSearch] = useState<string>("");
   const [selectedStudentId, setSelectedStudentId] = useState<string>("");
   const [openAddDialog, setOpenAddDialog] = useState<boolean>(false);
+  const [deleteDialog, setDeleteDialog] = useState<{
+    open: boolean;
+    member: any | null;
+  }>({
+    open: false,
+    member: null,
+  });
   const [errorDialog, setErrorDialog] = useState<{
     open: boolean;
     title: string;
@@ -156,7 +164,7 @@ export default function GroupDetailPage() {
       setAddingMember(true);
       await GroupService.addMemberToGroupViaApi({
         userId: selectedStudentId,
-        groupId: group.id,
+        groupId: group.groupId,
       });
 
       toast({
@@ -165,7 +173,7 @@ export default function GroupDetailPage() {
       });
 
       // Refresh group detail to see new member list
-      const updated = await GroupService.getGroupById(group.id);
+      const updated = await GroupService.getGroupById(group.groupId);
       if (updated) {
         setGroup(updated);
       }
@@ -238,7 +246,7 @@ export default function GroupDetailPage() {
   }
 
   const statusColor =
-    group.status === "active"
+    group.status === "open"
       ? "bg-green-100 text-green-700"
       : "bg-gray-100 text-gray-700";
 
@@ -247,8 +255,7 @@ export default function GroupDetailPage() {
     const term = studentSearch.toLowerCase();
     return (
       s.userProfileViewModel.fullName.toLowerCase().includes(term) ||
-      s.user.email.toLowerCase().includes(term) ||
-      s.user.username.toLowerCase().includes(term)
+      s.user.email.toLowerCase().includes(term)
     );
   });
 
@@ -334,7 +341,7 @@ export default function GroupDetailPage() {
               <p className="text-gray-600">Nhóm hiện chưa có thành viên nào.</p>
             ) : (
               <div className="space-y-4">
-                {group.members.map((member) => (
+                {group.members.map((member: any) => (
                   <Card
                     key={member.userId}
                     className="hover:shadow-md transition-shadow"
@@ -362,46 +369,11 @@ export default function GroupDetailPage() {
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={async () => {
-                                if (
-                                  !window.confirm(
-                                    `Bạn có chắc muốn xóa ${member.username} khỏi nhóm?`
-                                  )
-                                ) {
-                                  return;
-                                }
-
-                                try {
-                                  await GroupService.removeMemberFromGroupViaApi(
-                                    { memberId: member.userId }
-                                  );
-
-                                  setGroup({
-                                    ...group,
-                                    members: group.members.filter(
-                                      (m) => m.userId !== member.userId
-                                    ),
-                                  });
-
-                                  toast({
-                                    title: "Đã xóa thành viên khỏi nhóm",
-                                    description: `${member.username} đã được xóa khỏi nhóm thành công`,
-                                  });
-                                } catch (error) {
-                                  console.error(
-                                    "Error removing member from group:",
-                                    error
-                                  );
-                                  const description =
-                                    error instanceof Error && error.message
-                                      ? error.message
-                                      : "Không thể xóa sinh viên khỏi nhóm";
-                                  toast({
-                                    title: "Lỗi",
-                                    description,
-                                    variant: "destructive",
-                                  });
-                                }
+                              onClick={() => {
+                                setDeleteDialog({
+                                  open: true,
+                                  member: member,
+                                });
                               }}
                             >
                               Xóa khỏi nhóm
@@ -463,8 +435,7 @@ export default function GroupDetailPage() {
                   <option value="">-- Chọn sinh viên --</option>
                   {filteredStudentsForSelect.map((s) => (
                     <option key={s.studentId} value={s.studentId}>
-                      {s.userProfileViewModel.fullName} - {s.user.email} -{" "}
-                      {s.user.username}
+                      {s.userProfileViewModel.fullName} - {s.user.email}
                     </option>
                   ))}
                 </select>
@@ -486,6 +457,135 @@ export default function GroupDetailPage() {
               </Button>
               <Button onClick={handleAddMember} disabled={addingMember}>
                 {addingMember ? "Đang thêm..." : "Thêm vào nhóm"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete Member Dialog */}
+        <Dialog
+          open={deleteDialog.open}
+          onOpenChange={(open) =>
+            setDeleteDialog({ ...deleteDialog, open })
+          }
+        >
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
+                  <AlertCircle className="w-6 h-6 text-red-600" />
+                </div>
+                <div>
+                  <DialogTitle className="text-lg font-semibold text-gray-900">
+                    Xác nhận xóa thành viên
+                  </DialogTitle>
+                  <DialogDescription className="mt-1">
+                    Hành động này không thể hoàn tác
+                  </DialogDescription>
+                </div>
+              </div>
+            </DialogHeader>
+            <div className="pt-4 px-6 pb-2">
+              <div className="bg-gray-50 rounded-lg p-4 mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
+                    <User className="w-5 h-5 text-gray-600" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-gray-900">
+                      {deleteDialog.member?.fullName ||
+                        deleteDialog.member?.username ||
+                        "Thành viên"}
+                    </p>
+                    {deleteDialog.member?.email && (
+                      <p className="text-sm text-gray-600">
+                        {deleteDialog.member.email}
+                      </p>
+                    )}
+                    {deleteDialog.member?.roleInGroup && (
+                      <Badge
+                        variant="outline"
+                        className="mt-1 text-xs"
+                      >
+                        {deleteDialog.member.roleInGroup}
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <p className="text-gray-700 text-sm">
+                Bạn có chắc chắn muốn xóa{" "}
+                <span className="font-semibold">
+                  {deleteDialog.member?.fullName ||
+                    deleteDialog.member?.username ||
+                    "thành viên này"}
+                </span>{" "}
+                khỏi nhóm <span className="font-semibold">{group?.groupName}</span>?
+              </p>
+            </div>
+            <DialogFooter className="gap-2">
+              <Button
+                variant="outline"
+                onClick={() =>
+                  setDeleteDialog({ ...deleteDialog, open: false })
+                }
+              >
+                Hủy
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={async () => {
+                  if (!deleteDialog.member) return;
+
+                  try {
+                    const groupId = params.groupId as string;
+                    const memberName =
+                      deleteDialog.member.fullName ||
+                      deleteDialog.member.username ||
+                      "Thành viên";
+
+                    const updatedGroup =
+                      await GroupService.removeMemberFromGroupViaApi({
+                        memberId: deleteDialog.member.userId,
+                        groupId: groupId,
+                      });
+
+                    if (updatedGroup) {
+                      setGroup(updatedGroup);
+                    } else {
+                      // Fallback: reload the group
+                      const reloadedGroup =
+                        await GroupService.getGroupById(groupId);
+                      if (reloadedGroup) {
+                        setGroup(reloadedGroup);
+                      }
+                    }
+
+                    setDeleteDialog({ open: false, member: null });
+
+                    toast({
+                      title: "✅ Đã xóa thành viên khỏi nhóm",
+                      description: `${memberName} đã được xóa khỏi nhóm thành công.`,
+                      className: "bg-green-50 border-green-200",
+                    });
+                  } catch (error) {
+                    console.error(
+                      "Error removing member from group:",
+                      error
+                    );
+                    const description =
+                      error instanceof Error && error.message
+                        ? error.message
+                        : "Không thể xóa sinh viên khỏi nhóm";
+                    toast({
+                      title: "Lỗi",
+                      description,
+                      variant: "destructive",
+                    });
+                  }
+                }}
+              >
+                Xác nhận xóa
               </Button>
             </DialogFooter>
           </DialogContent>

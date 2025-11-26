@@ -6,6 +6,21 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { LayoutDashboard, BookOpen, Users, ClipboardList, Award, LogOut, Menu, X, User as UserIcon, UserX } from "lucide-react"
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import {
+  LayoutDashboard,
+  BookOpen,
+  Users,
+  ClipboardList,
+  Award,
+  LogOut,
+  Menu,
+  X,
+  User as UserIcon,
+  UserX,
+} from "lucide-react";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -39,14 +54,14 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
     { name: "My Group", href: "/student/group", icon: Users },
     { name: "My Tasks", href: "/student/tasks", icon: ClipboardList },
     { name: "Profile", href: "/student/profile", icon: UserIcon },
-  ]
+  ];
 
   const adminNavItems = [
     { name: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
     { name: "Users", href: "/admin/users", icon: Users },
     { name: "Courses", href: "/admin/courses", icon: BookOpen },
     { name: "Groups", href: "/admin/groups", icon: Users },
-  ]
+  ];
 
   const navItems =
     role === "lecturer"

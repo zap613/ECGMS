@@ -259,7 +259,11 @@ export default function TasksPage() {
   };
 
   const handleSubmitGrade = () => {
-    if (!selectedTask || gradeForm.score < 0 || gradeForm.score > (selectedTask.maxScore || 100)) {
+    if (
+      !selectedTask ||
+      gradeForm.score < 0 ||
+      gradeForm.score > (selectedTask.maxScore || 100)
+    ) {
       toast({
         title: "Lỗi",
         description: "Điểm số không hợp lệ",
@@ -271,7 +275,9 @@ export default function TasksPage() {
     // TODO: Call API to submit grade
     toast({
       title: "Thành công",
-      description: `Đã chấm điểm ${gradeForm.score}/${selectedTask.maxScore || 100} cho task "${selectedTask.taskName}"`,
+      description: `Đã chấm điểm ${gradeForm.score}/${
+        selectedTask.maxScore || 100
+      } cho task "${selectedTask.taskName}"`,
     });
 
     setShowGradeDialog(false);
@@ -368,7 +374,10 @@ export default function TasksPage() {
                       </SelectTrigger>
                       <SelectContent>
                         {lecturerCourses.map((course) => (
-                          <SelectItem key={course.courseId} value={course.courseId}>
+                          <SelectItem
+                            key={course.courseId}
+                            value={course.courseId}
+                          >
                             {course.courseCode} - {course.courseName}
                           </SelectItem>
                         ))}
@@ -419,7 +428,9 @@ export default function TasksPage() {
                             <input
                               type="checkbox"
                               id={group.groupId}
-                              checked={taskForm.groupIds.includes(group.groupId)}
+                              checked={taskForm.groupIds.includes(
+                                group.groupId
+                              )}
                               onChange={() => handleGroupToggle(group.groupId)}
                               className="w-4 h-4"
                             />
@@ -465,7 +476,7 @@ export default function TasksPage() {
                       }
                     />
                   </div>
-                  <div className="space-y-2">
+                  {/* <div className="space-y-2">
                     <Label htmlFor="maxScore">Điểm tối đa</Label>
                     <Input
                       id="maxScore"
@@ -480,7 +491,7 @@ export default function TasksPage() {
                       min={1}
                       max={100}
                     />
-                  </div>
+                  </div> */}
                   <div className="flex items-center">
                     <button
                       className="text-sm text-blue-600 hover:underline"
@@ -524,7 +535,9 @@ export default function TasksPage() {
 
               // Calculate checkpoint statistics
               const gradedTasks = tasks.filter((t) => t.status === "graded");
-              const submittedTasks = tasks.filter((t) => t.status === "submitted");
+              const submittedTasks = tasks.filter(
+                (t) => t.status === "submitted"
+              );
               const averageGrade =
                 gradedTasks.length > 0
                   ? Math.round(
@@ -562,7 +575,9 @@ export default function TasksPage() {
                       <div className="flex items-center gap-4">
                         <div className="text-right">
                           <p className="text-sm text-gray-600">Số task</p>
-                          <p className="text-lg font-semibold">{tasks.length}</p>
+                          <p className="text-lg font-semibold">
+                            {tasks.length}
+                          </p>
                         </div>
                         {averageGrade !== null && (
                           <div className="text-right">
@@ -613,7 +628,9 @@ export default function TasksPage() {
                                         {task.taskName}
                                       </h4>
                                       <Badge
-                                        className={getPriorityColor(task.priority)}
+                                        className={getPriorityColor(
+                                          task.priority
+                                        )}
                                       >
                                         {getPriorityLabel(task.priority)}
                                       </Badge>
@@ -634,23 +651,31 @@ export default function TasksPage() {
                                         </p>
                                       </div>
                                       <div>
-                                        <p className="text-gray-600">Deadline</p>
+                                        <p className="text-gray-600">
+                                          Deadline
+                                        </p>
                                         <p className="font-semibold flex items-center gap-1">
                                           <Calendar className="w-4 h-4" />
                                           {task.dueDate}
                                         </p>
                                       </div>
-                                      {task.status === "graded" && task.grade !== undefined && (
-                                        <div>
-                                          <p className="text-gray-600">Điểm</p>
-                                          <p className="font-semibold text-green-600">
-                                            {task.grade}/{task.maxScore || 100}
-                                          </p>
-                                        </div>
-                                      )}
+                                      {task.status === "graded" &&
+                                        task.grade !== undefined && (
+                                          <div>
+                                            <p className="text-gray-600">
+                                              Điểm
+                                            </p>
+                                            <p className="font-semibold text-green-600">
+                                              {task.grade}/
+                                              {task.maxScore || 100}
+                                            </p>
+                                          </div>
+                                        )}
                                       {task.status === "submitted" && (
                                         <div>
-                                          <p className="text-gray-600">Đã nộp</p>
+                                          <p className="text-gray-600">
+                                            Đã nộp
+                                          </p>
                                           <p className="font-semibold text-blue-600">
                                             {task.submittedDate}
                                           </p>

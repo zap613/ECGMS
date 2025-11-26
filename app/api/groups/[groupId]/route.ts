@@ -4,22 +4,25 @@ const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://140.245.42.78:5050/api";
 
 interface RouteParams {
-  params: {
+  params: Promise<{
     groupId: string;
-  };
+  }>;
 }
 
 export async function GET(request: NextRequest, { params }: RouteParams) {
-  const { groupId } = params;
+  const { groupId } = await params;
 
   try {
-    const response = await fetch(`${API_BASE_URL}/Group/GetGroupBy/${groupId}`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      cache: "no-store",
-    });
+    const response = await fetch(
+      `${API_BASE_URL}/Group/GetGroupBy/${groupId}`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        cache: "no-store",
+      }
+    );
 
     if (response.status === 404) {
       return NextResponse.json(
@@ -56,5 +59,3 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     );
   }
 }
-
-
