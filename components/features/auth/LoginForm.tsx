@@ -27,7 +27,23 @@ export function LoginForm() {
 
     try {
       // Đăng nhập theo email bằng generated UserService (password để trống)
-      const rawUser = await UserService.getApiUserEmail({ email })
+      let rawUser: any = null
+      try {
+        const res = await fetch(`/api/proxy/api/User/email/${encodeURIComponent(email)}`, { cache: 'no-store', headers: { accept: 'text/plain' } })
+        if (res.ok) {
+          rawUser = await res.json()
+        } else if (res.status < 500) {
+          rawUser = await UserService.getApiUserEmail({ email })
+        } else {
+          throw new Error('Máy chủ gặp sự cố, vui lòng thử lại sau')
+        }
+      } catch (e: any) {
+        try {
+          rawUser = await UserService.getApiUserEmail({ email })
+        } catch {
+          throw e
+        }
+      }
       // Debug thực tế giá trị role
       console.log('🔍 Raw User:', rawUser)
       console.log('🔍 Role object:', rawUser?.role)

@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import type { GroupMember, Task, TaskStatus } from "@/lib/types";
+import type { GroupMember, Task } from "@/lib/types";
 import { useEffect, useState } from "react";
 
 type Props = {
@@ -14,11 +14,11 @@ type Props = {
   onOpenChange: (v: boolean) => void;
   task: Task | null;
   members: GroupMember[];
-  onUpdate: (payload: { status: TaskStatus; progressPercent: number; remarks: string }) => void;
+  onUpdate: (payload: { status: Task["status"]; progressPercent: number; remarks: string }) => void;
 };
 
 export default function TaskDetailSheet({ open, onOpenChange, task, members, onUpdate }: Props) {
-  const [status, setStatus] = useState<TaskStatus>("pending");
+  const [status, setStatus] = useState<Task["status"]>("pending");
   const [progress, setProgress] = useState<number>(0);
   const [remarks, setRemarks] = useState<string>("");
   const [commentText, setCommentText] = useState<string>("");
@@ -27,7 +27,7 @@ export default function TaskDetailSheet({ open, onOpenChange, task, members, onU
   useEffect(() => {
     if (task) {
       setStatus(task.status);
-      setProgress(task.status === "completed" ? 100 : task.status === "in-progress" ? 50 : 10);
+      setProgress(task.status === "graded" ? 100 : task.status === "in-progress" ? 50 : 10);
       setRemarks("");
       setComments([]);
       setCommentText("");
@@ -53,14 +53,14 @@ export default function TaskDetailSheet({ open, onOpenChange, task, members, onU
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Trạng thái</Label>
-                  <Select value={status} onValueChange={(v) => setStatus(v as TaskStatus)}>
+                  <Select value={status} onValueChange={(v) => setStatus(v as Task["status"]) }>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="pending">Chờ làm</SelectItem>
                       <SelectItem value="in-progress">Đang làm</SelectItem>
-                      <SelectItem value="completed">Hoàn thành</SelectItem>
+                    <SelectItem value="graded">Hoàn thành</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

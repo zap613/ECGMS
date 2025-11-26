@@ -68,7 +68,18 @@ export default function LoginPage() {
         }
       } else {
         // Đăng nhập theo email (password để trống do passwordHash=null)
-        rawUser = await UserService.getApiUserEmail({ email })
+        try {
+          const res = await fetch(`/api/proxy/api/User/email/${encodeURIComponent(email)}`, { cache: 'no-store', headers: { accept: 'text/plain' } })
+          if (res.ok) {
+            rawUser = await res.json()
+          } else if (res.status < 500) {
+            rawUser = await UserService.getApiUserEmail({ email })
+          } else {
+            throw new Error('Máy chủ gặp sự cố, vui lòng thử lại sau')
+          }
+        } catch (e) {
+          rawUser = await UserService.getApiUserEmail({ email })
+        }
       }
       // Debug giá trị thực tế
       console.log('🔍 Raw User:', rawUser)

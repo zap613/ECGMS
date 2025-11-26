@@ -15,6 +15,7 @@ import type { User, MajorItem, UserProfile } from "@/lib/types" // Import MajorI
 import type { ChangeMockDataProps } from "@/components/features/ChangeMockData"
 import { MajorService } from "@/lib/api/majorService" // Import Service Adapter mới tạo
 import { UserProfileService } from "@/lib/api/generated/services/UserProfileService"
+import { UserService } from "@/lib/api/generated/services/UserService"
 
 // Giả sử có danh sách các skill có thể chọn
 const availableSkills = ["Frontend", "Backend", "React", "Node.js", "Database", "DevOps", "CI/CD", "AWS", "UI/UX", "Business Analyst", "Tester", "QA", "VueJS", "Angular"];
@@ -32,6 +33,7 @@ export default function StudentProfilePage() {
   // State cho UserProfile từ API
   const [profile, setProfile] = React.useState<UserProfile | null>(null);
   const [editable, setEditable] = React.useState<{ fullName?: string | null; bio?: string | null; avatarUrl?: string | null }>({});
+  const [effectiveUserId, setEffectiveUserId] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     const initData = async () => {
@@ -50,7 +52,54 @@ export default function StudentProfilePage() {
 
         // 2a. Load UserProfile từ API theo schema BE
         try {
-          const apiProfile = await UserProfileService.getApiUserProfile1({ id: currentUser.userId });
+          let uid = currentUser.userId;
+          const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(uid));
+          if (!isUuid) {
+            try {
+              const res = await fetch(`/api/proxy/api/User/email/${encodeURIComponent(currentUser.email)}`, { cache: 'no-store', headers: { accept: 'text/plain' } });
+              if (res.ok) {
+                const raw = await res.json();
+                uid = raw?.id || uid;
+              } else {
+                const byEmail = await UserService.getApiUserEmail({ email: currentUser.email });
+                uid = (byEmail as any)?.id || uid;
+              }
+            } catch {
+              try {
+                const byEmail = await UserService.getApiUserEmail({ email: currentUser.email });
+                uid = (byEmail as any)?.id || uid;
+              } catch {}
+            }
+          }
+          const resolvedIsUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(uid));
+          if (!resolvedIsUuid) {
+            try {
+              const res = await fetch(`/api/proxy/api/User/email/${encodeURIComponent(currentUser.email)}`, { cache: 'no-store', headers: { accept: 'text/plain' } });
+              if (res.ok) {
+                const raw = await res.json();
+                const pAny = (raw?.userProfile || raw?.userProfileViewModel || {}) as any;
+                const mappedProfile: UserProfile = {
+                  userId: pAny.userId || raw?.id || currentUser.userId,
+                  fullName: pAny.fullName || raw?.username || raw?.email || currentUser.email,
+                  bio: pAny.bio,
+                  avatarUrl: pAny.avatarUrl,
+                  status: pAny.status ?? undefined,
+                  major: pAny.major ? {
+                    id: pAny.major.majorId || pAny.major.id,
+                    majorCode: pAny.major.majorCode,
+                    majorName: pAny.major.name,
+                    description: pAny.major.description,
+                  } : undefined,
+                };
+                setProfile(mappedProfile);
+                setEditable({ fullName: mappedProfile.fullName ?? null, bio: mappedProfile.bio ?? null, avatarUrl: mappedProfile.avatarUrl ?? null });
+                if (mappedProfile.major?.majorCode) setSelectedMajor(mappedProfile.major.majorCode);
+                return;
+              }
+            } catch {}
+          }
+          setEffectiveUserId(uid);
+          const apiProfile = await UserProfileService.getApiUserProfile1({ id: uid });
           // Map về UserProfile (FE)
           const pAny = apiProfile as any;
           const mappedProfile: UserProfile = {
@@ -106,11 +155,12 @@ export default function StudentProfilePage() {
         bio: editable.bio ?? null,
         avatarUrl: editable.avatarUrl ?? null,
       };
-      await UserProfileService.putApiUserProfile({ id: user.userId, requestBody });
+      const uid = effectiveUserId || user.userId;
+      await UserProfileService.putApiUserProfile({ id: uid, requestBody });
 
       const currentMajorCode = profile?.major?.majorCode;
       if (selectedMajor && selectedMajor !== currentMajorCode) {
-        await UserProfileService.patchApiUserProfileMajor({ userId: user.userId, requestBody: { majorCode: selectedMajor } });
+        await UserProfileService.patchApiUserProfileMajor({ userId: uid, requestBody: { majorCode: selectedMajor } });
       }
 
       const updatedProfile: UserProfile = {

@@ -12,10 +12,11 @@ const apiUrl = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '');
 OpenAPI.BASE = apiUrl ? `${apiUrl}/proxy` : '/api/proxy';
 
 // Helper map status, priority... (giữ nguyên các helper cũ nếu có hoặc viết lại gọn)
-function mapApiStatusToFeStatus(apiStatus: string | null | undefined): TaskStatus {
+function mapApiStatusToFeStatus(apiStatus: string | null | undefined): "pending" | "in-progress" | "submitted" | "graded" {
     const status = apiStatus?.toLowerCase() || '';
-    if (status === 'done' || status === 'completed') return 'completed';
+    if (status === 'done' || status === 'completed' || status === 'graded') return 'graded';
     if (status === 'inprogress' || status === 'in-progress') return 'in-progress';
+    if (status === 'submitted') return 'submitted';
     return 'pending';
 }
 

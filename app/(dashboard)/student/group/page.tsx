@@ -64,6 +64,38 @@ export default function FindGroupsPage() {
     loadGroups()
   }, [loadGroups])
 
+  React.useEffect(() => {
+    (async () => {
+      const cu = getCurrentUser() as any
+      if (!cu || cu.role !== 'student') return
+      if (cu.groupId) return
+      let uid = String(cu.userId || '')
+      const isGuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(uid)
+      if (!isGuid && cu.email) {
+        try {
+          const res = await fetch(`/api/proxy/api/User/email/${encodeURIComponent(cu.email)}`, { cache: 'no-store', headers: { accept: 'text/plain' } })
+          if (res.ok) {
+            const raw = await res.json()
+            uid = raw?.id || uid
+          }
+        } catch {}
+      }
+      try {
+        const list = await GeneratedGroupMemberService.getApiGroupMember({ userId: uid })
+        const items = Array.isArray(list) ? list : []
+        if (items.length > 0) {
+          const gid = items[0]?.groupId
+          if (gid) {
+            const updated = { ...cu, groupId: gid }
+            updateCurrentUser(updated)
+            setUser(updated)
+            router.push(`/student/groups/${gid}`)
+          }
+        }
+      } catch {}
+    })()
+  }, [])
+
   // Kiểm tra tình trạng Passed của EXE101 để hiển thị EXE102
   const [user, setUser] = React.useState(() => getCurrentUser() as any);
   const hasPassedEXE101 = Array.isArray((user as any)?.studentCourses)
@@ -96,8 +128,7 @@ export default function FindGroupsPage() {
         toast({ title: isFirstMember ? "🎉 Chúc mừng Tân Trưởng Nhóm!" : "Tham gia thành công (Mock)", description: isFirstMember ? "Bạn là thành viên đầu tiên và đã trở thành Leader." : `Bạn đã tham gia ${g.groupName}.`, className: isFirstMember ? "bg-yellow-50 border-yellow-200 text-yellow-800" : undefined })
         router.push(`/student/groups/${groupId}`)
       } else {
-        // Bước 1: Tạo GroupMember
-        await GeneratedGroupMemberService.postApiGroupMember({ requestBody: { groupId, userId: (user as any).userId } })
+        await GroupService.joinGroup(groupId, (user as any).email || (user as any).userId)
 
         // Bước 2: Nếu là người đầu tiên, set LeaderId
         if (isFirstMember) {

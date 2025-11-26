@@ -38,7 +38,6 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
     { name: "Dashboard", href: "/student/dashboard", icon: LayoutDashboard },
     { name: "My Group", href: "/student/group", icon: Users },
     { name: "My Tasks", href: "/student/tasks", icon: ClipboardList },
-    { name: "My Grades", href: "/student/grades", icon: Award },
     { name: "Profile", href: "/student/profile", icon: UserIcon },
   ]
 

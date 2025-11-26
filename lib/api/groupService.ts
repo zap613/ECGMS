@@ -13,6 +13,7 @@ import {
   type GroupMember as ApiGroupMember,
   type CreateGroupMemberViewModel,
   TopicService,
+  UserService,
 } from "@/lib/api/generated";
 import type { UpdateGroupViewModel } from "@/lib/api/generated/models/UpdateGroupViewModel";
 
@@ -134,17 +135,49 @@ export class GroupService {
 
   static async joinGroup(groupId: string, userId: string): Promise<FeGroup> {
     try {
+      if (!groupId || !userId) throw new Error("Thiếu groupId hoặc userId.");
+      let resolvedUserId = String(userId);
+      let isGuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(resolvedUserId);
+      if (!isGuid && /@/.test(resolvedUserId)) {
+        try {
+          const u = await UserService.getApiUserEmail({ email: resolvedUserId });
+          resolvedUserId = (u as any)?.id || resolvedUserId;
+          isGuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(resolvedUserId);
+        } catch {}
+      }
+      if (!isGuid) throw new Error("userId không hợp lệ (phải là GUID). Hãy truyền 'user.id' hoặc email để tự động chuyển đổi.");
+      // Optional: kiểm tra nhóm đã đầy
+      try {
+        const g = await this.getGroupById(groupId);
+        if (g && (g.memberCount >= g.maxMembers)) {
+          throw new Error("Nhóm đã đầy, không thể tham gia.");
+        }
+      } catch {}
+      try {
+        const existing = await GeneratedGroupMemberService.getApiGroupMember({ groupId, userId: resolvedUserId });
+        if (Array.isArray(existing) && existing.length > 0) {
+          const updatedGroup = await this.getGroupById(groupId);
+          if (!updatedGroup) throw new Error("Không thể lấy thông tin nhóm.");
+          return updatedGroup;
+        }
+      } catch {}
       const requestBody: CreateGroupMemberViewModel = { 
         groupId: groupId, 
-        userId: userId 
+        userId: resolvedUserId 
       };
       await GeneratedGroupMemberService.postApiGroupMember({ requestBody });
       const updatedGroup = await this.getGroupById(groupId);
       if (!updatedGroup) throw new Error("Không thể lấy thông tin nhóm.");
       return updatedGroup;
     } catch (err: any) {
-      // Error handling...
-      throw err;
+      if (err instanceof ApiError) {
+        const body = (err as any)?.body;
+        const title = body?.title || body?.error || err.message || "Bad Request";
+        const detail = body?.errors ? JSON.stringify(body.errors) : '';
+        throw new Error(`${title}${detail ? `: ${detail}` : ''}`);
+      }
+      const msg = err instanceof Error ? err.message : String(err);
+      throw new Error(msg || "Không thể thêm thành viên vào nhóm.");
     }
   }
 
@@ -223,6 +256,7 @@ export class GroupService {
     update: Partial<{
       name: string;
       courseId: string;
+      topicId: string;
       maxMembers: number;
       startDate: string;
       endDate: string;

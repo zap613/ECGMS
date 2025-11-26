@@ -7,7 +7,7 @@ import { TaskService } from "@/lib/api/taskService";
 import { mockTasks } from "@/lib/mock-data/tasks";
 import { getGroupMembers as getMockGroupMembers } from "@/lib/mock-data/groups";
 import { getCurrentUser } from "@/lib/utils/auth";
-import type { GroupMember, Task, TaskPriority, TaskStatus, User } from "@/lib/types";
+import type { GroupMember, Task, TaskPriority, User } from "@/lib/types";
 
 import { DashboardLayout } from "@/components/layouts/dashboard-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,7 +23,7 @@ import CreateTaskDialog from "@/components/features/tasks/CreateTaskDialog";
 import TaskDetailSheet from "@/components/features/tasks/TaskDetailSheet";
 import { GroupMemberService as GeneratedGroupMemberService } from "@/lib/api/generated";
 
-type Filters = { status?: TaskStatus | ""; priority?: TaskPriority | "" };
+type Filters = { status?: Task["status"] | ""; priority?: TaskPriority | "" };
 type AssigneeScope = "me" | "group";
 
 export default function StudentTasksPage() {
@@ -147,6 +147,10 @@ export default function StudentTasksPage() {
           description: createForm.description,
           groupId: currentUser!.groupId!,
           groupName: currentUser?.groupId ? `Group ${currentUser.groupId}` : "Nhóm của tôi",
+          courseId: "",
+          courseCode: "",
+          checkpointId: "",
+          checkpointNumber: 0,
           assignedTo: members.find(m => m.userId === createForm.assigneeUserId)?.fullName || "",
           assignedToId: createForm.assigneeUserId,
           status: "pending",
@@ -180,7 +184,7 @@ export default function StudentTasksPage() {
     setDetailOpen(true);
   }
 
-  async function handleUpdateDetail(payload: { status: TaskStatus; progressPercent: number; remarks: string }) {
+  async function handleUpdateDetail(payload: { status: Task["status"]; progressPercent: number; remarks: string }) {
     if (!detailTask) return;
     try {
       setLoading(true);
@@ -203,7 +207,7 @@ export default function StudentTasksPage() {
     }
   }
 
-  async function handleMoveStatus(task: Task, nextStatus: TaskStatus) {
+  async function handleMoveStatus(task: Task, nextStatus: Task["status"]) {
     try {
       setLoading(true);
       if (useMock) {
@@ -257,7 +261,7 @@ export default function StudentTasksPage() {
                   </SelectContent>
                 </Select>
 
-                <Select value={filters.status || ""} onValueChange={(v) => setFilters(f => ({ ...f, status: (v === 'all' ? '' : v) as TaskStatus }))}>
+                <Select value={filters.status || ""} onValueChange={(v) => setFilters(f => ({ ...f, status: (v === 'all' ? '' : v) as Task["status"] }))}>
                   <SelectTrigger className="w-40">
                     <SelectValue placeholder="Lọc trạng thái" />
                   </SelectTrigger>
@@ -265,7 +269,7 @@ export default function StudentTasksPage() {
                     <SelectItem value="all">Tất cả</SelectItem>
                     <SelectItem value="pending">Chờ làm</SelectItem>
                     <SelectItem value="in-progress">Đang làm</SelectItem>
-                    <SelectItem value="completed">Hoàn thành</SelectItem>
+                    <SelectItem value="graded">Hoàn thành</SelectItem>
                   </SelectContent>
                 </Select>
 

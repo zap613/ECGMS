@@ -34,10 +34,13 @@ import { CourseFormDialog } from "@/components/features/course/CourseFormDialog"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select"
 import { useToast } from "@/components/ui/use-toast"
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 
 // --- SỬA LỖI TẠI ĐÂY ---
 // Import từ Adapter (lib/api/courseService), KHÔNG PHẢI generated
 import { CourseService } from "@/lib/api/courseService" 
+import { GroupService } from "@/lib/api/groupService"
 import type { Course } from "@/lib/types"
 import { getCoursesServerSide } from '@/app/(dashboard)/admin/courses/action';
 import ChangeMockData from "@/components/features/ChangeMockData";
@@ -49,8 +52,11 @@ export default function AdminCoursesPage() {
   const [isWizardOpen, setIsWizardOpen] = React.useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
   const [editingCourse, setEditingCourse] = React.useState<Course | null>(null);
-  const [statusFilter, setStatusFilter] = React.useState<string>("all");
+  const [statusFilter, setStatusFilter] = React.useState<string>("Active");
   const { toast } = useToast();
+  const [deleteId, setDeleteId] = React.useState<string | null>(null);
+  const [impact, setImpact] = React.useState<{ groups: number; students: number } | null>(null);
+  const [impactLoading, setImpactLoading] = React.useState(false);
   const [useMock, setUseMock] = React.useState<boolean>(() => {
     if (typeof window === 'undefined') return true;
     const saved = localStorage.getItem('useMock');
@@ -80,24 +86,43 @@ export default function AdminCoursesPage() {
     setIsEditDialogOpen(true);
   };
 
-  const handleDeleteCourse = async (courseId: string) => {
-    if (confirm("Hành động này sẽ chuyển khóa học sang trạng thái Inactive. Tiếp tục?")) {
-      try {
-        // Gọi delete tới BE qua proxy (Soft delete)
-        await CourseService.deleteCourse(courseId);
+  const handleDeleteCourse = (courseId: string) => {
+    setDeleteId(courseId);
+  };
 
-        // Cập nhật trạng thái local: KHÔNG xóa dòng, đổi sang Inactive
-        setCourses(prev => prev.map(c =>
-          (c.courseId === courseId) ? { ...c, status: 'Inactive' } : c
-        ));
-
-        toast({ title: "Thành công", description: "Khóa học đã được chuyển sang trạng thái Inactive." });
-      } catch (error) {
-        console.error("Failed to delete course:", error);
-        toast({ variant: "destructive", title: "Lỗi", description: "Không thể xóa (vô hiệu hóa) khóa học." });
-      }
+  const confirmDelete = async () => {
+    if (!deleteId) return;
+    try {
+      await CourseService.deleteCourse(deleteId);
+      setCourses(prev => prev.map(c => (c.courseId === deleteId ? { ...c, status: 'Inactive' } : c)));
+      toast({ title: "Đã vô hiệu hóa", description: "Khóa học đã được chuyển sang Inactive." });
+    } catch (error) {
+      toast({ variant: "destructive", title: "Lỗi", description: "Không thể thực hiện thao tác." });
+    } finally {
+      setDeleteId(null);
     }
   };
+
+  React.useEffect(() => {
+    ;(async () => {
+      if (!deleteId) { setImpact(null); return }
+      try {
+        setImpactLoading(true)
+        const groups = await GroupService.getGroups(deleteId)
+        const groupsCount = Array.isArray(groups) ? groups.length : 0
+        const studentIds = new Set<string>()
+        groups.forEach(g => {
+          const ms = Array.isArray(g.members) ? g.members : []
+          ms.forEach(m => { if (m?.userId) studentIds.add(String(m.userId)) })
+        })
+        setImpact({ groups: groupsCount, students: studentIds.size })
+      } catch {
+        setImpact({ groups: 0, students: 0 })
+      } finally {
+        setImpactLoading(false)
+      }
+    })()
+  }, [deleteId])
 
   const handleUpdateCourse = async (courseData: Course) => {
      if (!editingCourse?.courseId) return;
@@ -146,6 +171,12 @@ export default function AdminCoursesPage() {
           <Button onClick={() => setIsWizardOpen(true)}>
             <PlusCircle className="w-4 h-4 mr-2" />
             Khởi tạo Kỳ học mới
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => setStatusFilter(statusFilter === 'Inactive' ? 'Active' : 'Inactive')}
+          >
+            {statusFilter === 'Inactive' ? 'Show Active Course' : 'Show Inactive Course'}
           </Button>
           </div>
         </div>
@@ -222,13 +253,18 @@ export default function AdminCoursesPage() {
                                 <Edit className="mr-2 h-4 w-4" />
                                 Edit
                               </DropdownMenuItem>
-                              <DropdownMenuItem
-                                className="text-destructive"
-                                onClick={() => handleDeleteCourse(course.courseId)}
-                              >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Deactivate
-                              </DropdownMenuItem>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <DropdownMenuItem
+                                    className="text-destructive"
+                                    onClick={() => handleDeleteCourse(course.courseId)}
+                                  >
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    Deactivate
+                                  </DropdownMenuItem>
+                                </TooltipTrigger>
+                                <TooltipContent>Kết thúc khóa học & Vô hiệu hóa</TooltipContent>
+                              </Tooltip>
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </TableCell>
@@ -262,6 +298,29 @@ export default function AdminCoursesPage() {
             course={editingCourse}
           />
       )}
+
+      <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Vô hiệu hóa khóa học?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Khóa học sẽ chuyển sang trạng thái Inactive. Các nhóm học phần trực thuộc sẽ được xử lý theo quy trình kết thúc môn.
+              <br />
+              {impactLoading ? (
+                <span>Đang tính toán ảnh hưởng...</span>
+              ) : (
+                <span>
+                  Ảnh hưởng: <b>{impact?.groups ?? 0}</b> nhóm • <b>{impact?.students ?? 0}</b> sinh viên sẽ được coi là hoàn thành.
+                </span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Hủy</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-red-600 hover:bg-red-700">Xác nhận Vô hiệu hóa</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DashboardLayout>
   )
 }
