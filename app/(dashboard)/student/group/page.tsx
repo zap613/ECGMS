@@ -73,13 +73,42 @@ export default function FindGroupsPage() {
       const isGuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(uid)
       if (!isGuid && cu.email) {
         try {
-          const res = await fetch(`/api/proxy/api/User/email/${encodeURIComponent(cu.email)}`, { cache: 'no-store', headers: { accept: 'text/plain' } })
+          let ok = false
+          let res = await fetch(`/api/proxy/api/User/email/${encodeURIComponent(cu.email)}`, { cache: 'no-store', headers: { accept: 'text/plain' } })
           if (res.ok) {
-            const raw = await res.json()
-            uid = raw?.id || uid
+            const raw = await res.json(); uid = raw?.id || uid; ok = true
+          }
+          if (!ok) {
+            res = await fetch(`/api/proxy/User/email/${encodeURIComponent(cu.email)}`, { cache: 'no-store', headers: { accept: 'application/json' } })
+            if (res.ok) { const raw = await res.json(); uid = raw?.id || uid; ok = true }
+          }
+          if (!ok) {
+            try { const raw = await (await import('@/lib/api/generated/services/UserService')).UserService.getApiUserEmail({ email: cu.email }); uid = (raw as any)?.id || uid } catch {}
+          }
+          if (!ok) {
+            // Fallback: tìm membership bằng từ khóa email/username
+            try {
+              const r2 = await fetch(`/api/proxy/api/GroupMember?Keyword=${encodeURIComponent(cu.email || cu.username || '')}&PageNumber=1&PageSize=10`, { cache: 'no-store', headers: { accept: 'text/plain' } })
+              if (r2.ok) {
+                const body = await r2.json()
+                const items = Array.isArray(body?.items) ? body.items : []
+                if (items.length > 0) {
+                  const gid = items[0]?.groupId
+                  if (gid) {
+                    const updated = { ...cu, groupId: gid }
+                    updateCurrentUser(updated)
+                    setUser(updated)
+                    router.push(`/student/groups/${gid}`)
+                    return
+                  }
+                }
+              }
+            } catch {}
           }
         } catch {}
       }
+      const guidFinal = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(uid)
+      if (!guidFinal) return
       try {
         const list = await GeneratedGroupMemberService.getApiGroupMember({ userId: uid })
         const items = Array.isArray(list) ? list : []
