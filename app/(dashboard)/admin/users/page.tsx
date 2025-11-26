@@ -45,6 +45,7 @@ export default function AdminDataManagementPage() {
   const [isUploading, setIsUploading] = React.useState(false);
   const [students, setStudents] = React.useState<Student[]>([]);
   const [isLoadingStudents, setIsLoadingStudents] = React.useState(true);
+  const [isLoadingLecturers, setIsLoadingLecturers] = React.useState(false);
   const [lastFetchTime, setLastFetchTime] = React.useState<Date | null>(null);
   const [useMock, setUseMock] = React.useState<boolean>(() => {
     if (typeof window === 'undefined') return true;
@@ -58,6 +59,8 @@ export default function AdminDataManagementPage() {
   const [selectedSkill, setSelectedSkill] = React.useState<string>("all");
   const [currentPage, setCurrentPage] = React.useState(1);
   const pageSize = 20;
+  const [viewMode, setViewMode] = React.useState<"student" | "lecturer">("student");
+  const [lecturers, setLecturers] = React.useState<Student[]>([]);
 
   // Sort State
   const [sortConfig, setSortConfig] = React.useState<SortConfig>({
@@ -87,6 +90,35 @@ export default function AdminDataManagementPage() {
     }
   }, []);
 
+  const fetchLecturers = React.useCallback(async () => {
+    setIsLoadingLecturers(true);
+    try {
+      const timestamp = new Date().getTime();
+      const res = await fetch(`/api/proxy/User/Lecturer?_t=${timestamp}`, {
+        cache: "no-store",
+        headers: { "Cache-Control": "no-cache" },
+      });
+      if (!res.ok) throw new Error(`Failed to fetch: ${res.status}`);
+      const data = await res.json();
+      const mapped = (Array.isArray(data) ? data : []).map((item: any) => ({
+        id: item?.user?.id || item?.userProfileViewModel?.userId || item?.studentId || "",
+        username: item?.user?.username || "",
+        email: item?.user?.email || "",
+        userProfile: {
+          fullName: item?.userProfileViewModel?.fullName || item?.user?.username || "",
+          major: item?.userProfileViewModel?.major || null,
+        },
+        skillSet: item?.user?.skillSet || "",
+      })) as Student[];
+      setLecturers(mapped);
+      setLastFetchTime(new Date());
+    } catch (error: any) {
+      toast.error("Failed to load lecturers", { description: error.message });
+    } finally {
+      setIsLoadingLecturers(false);
+    }
+  }, []);
+
   React.useEffect(() => {
     fetchStudents();
   }, [fetchStudents]);
@@ -97,7 +129,7 @@ export default function AdminDataManagementPage() {
   }, [searchTerm, selectedMajor, selectedSkill]);
 
   // --- Handlers ---
-  const handleUpload = async (file: File, type: "student") => {
+  const handleUpload = async (file: File, type: "student" | "lecturer") => {
     const allowedExtensions = [".xlsx", ".xls", ".csv"];
     const isValid = allowedExtensions.some(ext => file.name.toLowerCase().endsWith(ext));
     if (!isValid) throw new Error("Invalid file. Upload Excel/CSV only.");
@@ -107,24 +139,25 @@ export default function AdminDataManagementPage() {
     try {
       const formData = new FormData();
       formData.append("file", file);
-      formData.append("type", type);
 
-      const res = await fetch("/api/users/import", {
+      const endpoint = type === "student" ? "/api/users/import" : "/api/proxy/User/import-lecturer";
+      const res = await fetch(endpoint, {
         method: "POST",
         body: formData,
         credentials: "include",
         cache: "no-store",
         headers: { "Cache-Control": "no-cache" },
       });
-      const data = await res.json();
+      let data: any = null;
+      try { data = await res.json(); } catch { data = null }
 
       if (!res.ok) {
-        const msg = data.error || "Import failed";
+        const msg = (data?.message || data?.error || data?.title || "Import failed");
         toast.error(msg);
         throw new Error(msg);
       }
 
-      toast.success(data.message || "Import success");
+      toast.success((data?.message) || "Import success");
 
       if (type === "student") {
         await new Promise(r => setTimeout(r, 500));
@@ -137,7 +170,7 @@ export default function AdminDataManagementPage() {
   };
 
   const handleImportStudents = (file: File) => handleUpload(file, "student");
-  // Đã xóa handleImportLecturers
+  const handleImportLecturers = (file: File) => handleUpload(file, "lecturer");
 
   // --- Helper Getters ---
   const getUsername = (s: Student) => s.username || "N/A";
@@ -159,33 +192,36 @@ export default function AdminDataManagementPage() {
   // --- Filter Options Logic ---
   const majorOptions = React.useMemo(() => {
     const set = new Set<string>();
-    students.forEach(s => {
+    const source = viewMode === "student" ? students : lecturers;
+    source.forEach(s => {
       const code = s.userProfile?.major?.majorCode || s.major?.majorCode;
       if (code) set.add(code);
     });
     return Array.from(set).sort();
-  }, [students]);
+  }, [students, lecturers, viewMode]);
 
   const skillOptions = React.useMemo(() => {
     const set = new Set<string>();
-    students.forEach(s => {
+    const source = viewMode === "student" ? students : lecturers;
+    source.forEach(s => {
       if (s.skillSet) {
         s.skillSet.split(/[;,]/).map(t => t.trim()).filter(Boolean).forEach(t => set.add(t.toLowerCase()));
       }
     });
     return Array.from(set).sort();
-  }, [students]);
+  }, [students, lecturers, viewMode]);
 
   // --- Data Processing: Search + Filter + Sort ---
   const sortedStudents = React.useMemo(() => {
     // 1. Filter
-    const filtered = students.filter(s => {
+    const base = viewMode === "student" ? students : lecturers;
+    const filtered = base.filter(s => {
       const term = searchTerm.toLowerCase();
       const matchesSearch = !term || (
         getUsername(s).toLowerCase().includes(term) ||
         getFullName(s).toLowerCase().includes(term) ||
         (s.email || "").toLowerCase().includes(term) ||
-        getStudentCode(s).toLowerCase().includes(term)
+        (viewMode === "student" ? getStudentCode(s).toLowerCase().includes(term) : true)
       );
 
       if (!matchesSearch) return false;
@@ -225,7 +261,7 @@ export default function AdminDataManagementPage() {
       if (aVal > bVal) return sortConfig.direction === "asc" ? 1 : -1;
       return 0;
     });
-  }, [students, sortConfig, searchTerm, selectedMajor, selectedSkill]);
+  }, [students, lecturers, viewMode, sortConfig, searchTerm, selectedMajor, selectedSkill]);
 
   // --- Pagination Logic ---
   const totalPages = React.useMemo(() => Math.max(1, Math.ceil(sortedStudents.length / pageSize)), [sortedStudents.length]);
@@ -247,16 +283,34 @@ export default function AdminDataManagementPage() {
       <div className="space-y-8">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Data Management</h1>
-          <p className="text-gray-600 mt-1">Import student data and view lists.</p>
+          <p className="text-gray-600 mt-1">Import and manage users.</p>
         </div>
-        <ChangeMockData loading={isLoadingStudents} onRefresh={fetchStudents} useMock={useMock} setUseMock={setUseMock} />
+        <div className="flex items-center justify-between">
+          <ChangeMockData loading={viewMode === "student" ? isLoadingStudents : isLoadingLecturers} onRefresh={viewMode === "student" ? fetchStudents : fetchLecturers} useMock={useMock} setUseMock={setUseMock} />
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => {
+              const next = viewMode === "student" ? "lecturer" : "student";
+              setViewMode(next);
+              if (next === "lecturer" && lecturers.length === 0) fetchLecturers();
+              if (next === "student" && students.length === 0) fetchStudents();
+            }}>
+              {viewMode === "student" ? "Show Lecturer List" : "Show Student List"}
+            </Button>
+          </div>
+        </div>
         
-        {/* Import Section - Đã xóa Lecturer Import */}
-        <div className="grid grid-cols-1 gap-6">
+        {/* Import Section */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <ImportCard 
             title="Import Students" 
             description="Upload student list (.xlsx/.csv)"
             onImport={handleImportStudents} 
+            disabled={isUploading} 
+          />
+          <ImportCard 
+            title="Import Lecturers" 
+            description="Upload lecturer list (.xlsx/.csv)"
+            onImport={handleImportLecturers} 
             disabled={isUploading} 
           />
         </div>
@@ -264,15 +318,15 @@ export default function AdminDataManagementPage() {
         {/* Import Format Guide */}
         <StudentImportGuide />
 
-        {/* Student Table */}
+        {/* List Table */}
         <Card>
           <CardHeader>
             <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
               <CardTitle className="flex items-center gap-2">
                 <User className="w-5 h-5" /> 
-                Student List 
+                {viewMode === "student" ? "Student List" : "Lecturer List"}
                 <span className="ml-1 text-sm font-normal text-gray-500">
-                   ({sortedStudents.length} students)
+                   ({sortedStudents.length} {viewMode === "student" ? "students" : "lecturers"})
                 </span>
               </CardTitle>
 
@@ -282,8 +336,8 @@ export default function AdminDataManagementPage() {
                     Updated: {lastFetchTime.toLocaleTimeString()}
                   </span>
                 )}
-                <Button variant="outline" size="sm" onClick={fetchStudents} disabled={isLoadingStudents}>
-                  <RefreshCw className={`w-4 h-4 mr-1 ${isLoadingStudents && "animate-spin"}`} /> Refresh
+                <Button variant="outline" size="sm" onClick={viewMode === "student" ? fetchStudents : fetchLecturers} disabled={viewMode === "student" ? isLoadingStudents : isLoadingLecturers}>
+                  <RefreshCw className={`w-4 h-4 mr-1 ${(viewMode === "student" ? isLoadingStudents : isLoadingLecturers) && "animate-spin"}`} /> Refresh
                 </Button>
               </div>
             </div>
@@ -323,14 +377,14 @@ export default function AdminDataManagementPage() {
             </div>
 
             {/* --- Table --- */}
-            {isLoadingStudents ? (
+            {(viewMode === "student" ? isLoadingStudents : isLoadingLecturers) ? (
               <div className="flex justify-center p-8">
                 <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
               </div>
             ) : sortedStudents.length === 0 ? (
               <div className="text-center py-12 border rounded-md bg-gray-50">
                 <Search className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                <p className="text-gray-900 font-medium">No students found</p>
+                <p className="text-gray-900 font-medium">No data found</p>
                 <p className="text-gray-500 text-sm">Try adjusting your search or filters.</p>
               </div>
             ) : (

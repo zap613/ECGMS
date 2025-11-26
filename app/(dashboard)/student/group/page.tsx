@@ -1,3 +1,4 @@
+// app/(dashboard)/student/group/page.tsx
 "use client"
 
 import * as React from "react"
@@ -6,7 +7,7 @@ import { DashboardLayout } from "@/components/layouts/dashboard-layout"
 import { GroupCard } from "@/components/features/group/GroupCard"
 import { Button } from "@/components/ui/button"
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select"
-import { PlusCircle, Filter, Loader2 } from "lucide-react"
+import { Filter, Loader2, Crown, Sparkles, UserPlus } from "lucide-react"
 // SỬA: Import Service và Type thay vì Mock Data
 import { GroupService } from "@/lib/api/groupService"
 import type { Group } from "@/lib/types"
@@ -14,6 +15,8 @@ import { getCurrentUser, updateCurrentUser } from "@/lib/utils/auth"
 import ChangeMockData, { type ChangeMockDataProps } from "@/components/features/ChangeMockData"
 import { mockGroups } from "@/lib/mock-data/groups"
 import { useToast } from "@/components/ui/use-toast"
+import { Switch } from "@/components/ui/switch"
+import { GroupMemberService as GeneratedGroupMemberService } from "@/lib/api/generated"
 
 export default function FindGroupsPage() {
   const router = useRouter()
@@ -22,6 +25,7 @@ export default function FindGroupsPage() {
   const [groups, setGroups] = React.useState<Group[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [selectedCourse, setSelectedCourse] = React.useState<string>("EXE101");
+  const [onlyEmpty, setOnlyEmpty] = React.useState<boolean>(false);
   const [useMock, setUseMock] = React.useState<boolean>(() => {
     if (typeof window === 'undefined') return true
     try {
@@ -36,15 +40,17 @@ export default function FindGroupsPage() {
     try {
       if (useMock) {
         const data = mockGroups
-        const filtered = selectedCourse
+        let filtered = selectedCourse
           ? data.filter(g => (g.courseCode || '').toUpperCase() === selectedCourse.toUpperCase())
           : data
+        if (onlyEmpty) filtered = filtered.filter(g => (g.memberCount || 0) === 0)
         setGroups(filtered)
       } else {
         const data = await GroupService.getGroups();
-        const filtered = selectedCourse
+        let filtered = selectedCourse
           ? data.filter(g => (g.courseCode || "").toUpperCase() === selectedCourse.toUpperCase())
           : data;
+        if (onlyEmpty) filtered = filtered.filter(g => (g.memberCount || 0) === 0)
         setGroups(filtered);
       }
     } catch (error) {
@@ -52,11 +58,72 @@ export default function FindGroupsPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [useMock, selectedCourse])
+  }, [useMock, selectedCourse, onlyEmpty])
 
   React.useEffect(() => {
     loadGroups()
   }, [loadGroups])
+
+  React.useEffect(() => {
+    (async () => {
+      const cu = getCurrentUser() as any
+      if (!cu || cu.role !== 'student') return
+      if (cu.groupId) return
+      let uid = String(cu.userId || '')
+      const isGuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(uid)
+      if (!isGuid && cu.email) {
+        try {
+          let ok = false
+          let res = await fetch(`/api/proxy/api/User/email/${encodeURIComponent(cu.email)}`, { cache: 'no-store', headers: { accept: 'text/plain' } })
+          if (res.ok) {
+            const raw = await res.json(); uid = raw?.id || uid; ok = true
+          }
+          if (!ok) {
+            res = await fetch(`/api/proxy/User/email/${encodeURIComponent(cu.email)}`, { cache: 'no-store', headers: { accept: 'application/json' } })
+            if (res.ok) { const raw = await res.json(); uid = raw?.id || uid; ok = true }
+          }
+          if (!ok) {
+            try { const raw = await (await import('@/lib/api/generated/services/UserService')).UserService.getApiUserEmail({ email: cu.email }); uid = (raw as any)?.id || uid } catch {}
+          }
+          if (!ok) {
+            // Fallback: tìm membership bằng từ khóa email/username
+            try {
+              const r2 = await fetch(`/api/proxy/api/GroupMember?Keyword=${encodeURIComponent(cu.email || cu.username || '')}&PageNumber=1&PageSize=10`, { cache: 'no-store', headers: { accept: 'text/plain' } })
+              if (r2.ok) {
+                const body = await r2.json()
+                const items = Array.isArray(body?.items) ? body.items : []
+                if (items.length > 0) {
+                  const gid = items[0]?.groupId
+                  if (gid) {
+                    const updated = { ...cu, groupId: gid }
+                    updateCurrentUser(updated)
+                    setUser(updated)
+                    router.push(`/student/groups/${gid}`)
+                    return
+                  }
+                }
+              }
+            } catch {}
+          }
+        } catch {}
+      }
+      const guidFinal = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(uid)
+      if (!guidFinal) return
+      try {
+        const list = await GeneratedGroupMemberService.getApiGroupMember({ userId: uid })
+        const items = Array.isArray(list) ? list : []
+        if (items.length > 0) {
+          const gid = items[0]?.groupId
+          if (gid) {
+            const updated = { ...cu, groupId: gid }
+            updateCurrentUser(updated)
+            setUser(updated)
+            router.push(`/student/groups/${gid}`)
+          }
+        }
+      } catch {}
+    })()
+  }, [])
 
   // Kiểm tra tình trạng Passed của EXE101 để hiển thị EXE102
   const [user, setUser] = React.useState(() => getCurrentUser() as any);
@@ -81,24 +148,43 @@ export default function FindGroupsPage() {
       toast({ title: "Nhóm đã đủ", description: "Nhóm này đã đủ thành viên." })
       return
     }
+    const isFirstMember = (g.memberCount || 0) === 0
     try {
       if (useMock) {
         const newUser = { ...user, groupId };
         updateCurrentUser(newUser)
         setUser(newUser)
-        toast({ title: "Tham gia thành công (Mock)", description: `Bạn đã tham gia ${g.groupName}.` })
+        toast({ title: isFirstMember ? "🎉 Chúc mừng Tân Trưởng Nhóm!" : "Tham gia thành công (Mock)", description: isFirstMember ? "Bạn là thành viên đầu tiên và đã trở thành Leader." : `Bạn đã tham gia ${g.groupName}.`, className: isFirstMember ? "bg-yellow-50 border-yellow-200 text-yellow-800" : undefined })
         router.push(`/student/groups/${groupId}`)
       } else {
-        const updated = await GroupService.joinGroup(groupId, (user as any).userId)
-        const newUser = { ...user, groupId: updated.groupId }
+        await GroupService.joinGroup(groupId, (user as any).email || (user as any).userId)
+
+        // Bước 2: Nếu là người đầu tiên, set LeaderId
+        if (isFirstMember) {
+          try {
+            await GroupService.updateGroup(groupId, { leaderId: (user as any).userId })
+            toast({
+              title: "🎉 Chúc mừng Tân Trưởng Nhóm!",
+              description: "Bạn là thành viên đầu tiên và đã trở thành Leader.",
+              className: "bg-yellow-50 border-yellow-200 text-yellow-800"
+            })
+          } catch (leaderErr) {
+            console.error("Set leader failed", leaderErr)
+            toast({ title: "Cảnh báo", description: "Đã vào nhóm nhưng chưa set được Leader. Hãy liên hệ Admin." })
+          }
+        } else {
+          toast({ title: "Thành công", description: `Đã tham gia nhóm ${g.groupName}` })
+        }
+
+        // Bước 3: Cập nhật user + chuyển trang
+        const newUser = { ...user, groupId } as any
         updateCurrentUser(newUser)
         setUser(newUser)
-        toast({ title: "Tham gia thành công", description: `Bạn đã tham gia ${updated.groupName}.` })
-        router.push(`/student/groups/${updated.groupId}`)
+        router.push(`/student/groups/${groupId}`)
       }
     } catch (err: any) {
       console.error("JoinGroup error:", err)
-      toast({ title: "Lỗi", description: err?.message || "Không thể tham gia nhóm." })
+      toast({ title: "Lỗi tham gia", description: err?.message || "Không thể tham gia nhóm." })
     }
   };
 
@@ -117,7 +203,7 @@ export default function FindGroupsPage() {
               Tìm một nhóm phù hợp hoặc tạo nhóm của riêng bạn.
             </p>
           </div>
-          <div className="flex gap-2 items-center">
+          <div className="flex gap-3 items-center">
             <Select value={selectedCourse} onValueChange={setSelectedCourse}>
               <SelectTrigger className="w-40">
                 <SelectValue placeholder="Chọn môn" />
@@ -127,11 +213,11 @@ export default function FindGroupsPage() {
                 {hasPassedEXE101 && <SelectItem value="EXE102">EXE102</SelectItem>}
               </SelectContent>
             </Select>
+            <div className="flex items-center gap-2">
+              <Switch checked={onlyEmpty} onCheckedChange={setOnlyEmpty} id="only-empty" />
+              <label htmlFor="only-empty" className="text-sm text-gray-700">Chỉ hiện nhóm trống</label>
+            </div>
             
-            <Button>
-                <PlusCircle className="w-4 h-4 mr-2"/>
-                Tạo nhóm mới
-            </Button>
             <ChangeMockData
               loading={isLoading}
               onRefresh={loadGroups}

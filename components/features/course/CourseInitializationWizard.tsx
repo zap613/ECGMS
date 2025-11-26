@@ -15,23 +15,44 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import type { Course } from "@/lib/types"
+import { useToast } from "@/components/ui/use-toast"
 
 interface WizardProps {
   isOpen: boolean
   onClose: () => void
   onComplete: (newCourses: Course[]) => void
+  existingCourses: Course[]
 }
 
-export function CourseInitializationWizard({ isOpen, onClose, onComplete }: WizardProps) {
+export function CourseInitializationWizard({ isOpen, onClose, onComplete, existingCourses }: WizardProps) {
   const [courseCode, setCourseCode] = React.useState("");
   const [courseName, setCourseName] = React.useState("");
   const [description, setDescription] = React.useState("");
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [errorMessage, setErrorMessage] = React.useState<string>("");
+  const { toast } = useToast();
 
   const handleSubmit = async () => {
     if (!courseCode || !courseName) {
-      alert("Vui lòng nhập đầy đủ Mã lớp và Tên lớp.");
+      setErrorMessage("Vui lòng nhập đầy đủ Mã lớp và Tên lớp.");
+      toast({ variant: 'destructive', title: 'Thiếu thông tin', description: 'Vui lòng nhập đầy đủ Mã lớp và Tên lớp.' });
       return;
+    }
+
+    // --- Validation: chặn trùng mã khi course đang Active ---
+    const enteredCode = courseCode.trim().toLowerCase();
+    const duplicate = existingCourses?.find(c => (c.courseCode || '').toLowerCase() === enteredCode);
+    if (duplicate) {
+      const raw = (duplicate as any).status;
+      const s = typeof raw === 'string' ? raw.toLowerCase() : raw;
+      const isActive = s === 1 || s === '1' || s === 'active' || s === 'open';
+      if (isActive) {
+        setErrorMessage(`Mã khóa học này đang hoạt động. Vui lòng deactivate khóa học cũ trước khi tạo mới.`);
+        toast({ variant: 'destructive', title: 'Mã đang hoạt động', description: `Mã "${courseCode}" thuộc về một khóa học Active.` });
+        return;
+      } else {
+        toast({ title: 'Mã trùng với khóa học ẩn', description: 'Hệ thống sẽ tạo phiên bản mới.' });
+      }
     }
 
     setIsSubmitting(true);
@@ -44,12 +65,20 @@ export function CourseInitializationWizard({ isOpen, onClose, onComplete }: Wiza
       });
 
       if (!res.ok) {
-        const text = await res.text();
-        throw new Error(text || 'Khởi tạo thất bại');
+        let message = 'Khởi tạo thất bại';
+        try {
+          const text = await res.text();
+          message = text || message;
+          try {
+            const parsed = JSON.parse(text);
+            if (parsed?.error) message = parsed.error;
+          } catch {}
+        } catch {}
+        throw new Error(message);
       }
 
       const created = await res.json();
-      alert('Khởi tạo khóa học thành công!');
+      toast({ title: 'Thành công', description: 'Khởi tạo khóa học thành công!' });
       const mapped = {
         courseId: created?.id || created?.courseId || `${courseCode}`,
         courseCode: created?.courseCode ?? courseCode,
@@ -57,22 +86,29 @@ export function CourseInitializationWizard({ isOpen, onClose, onComplete }: Wiza
         description: created?.description ?? description,
         semester: "N/A",
         year: new Date().getFullYear(),
-        status: "open",
+        status: "Active",
         createdDate: created?.createdAt ?? new Date().toISOString(),
         lecturerId: "",
         groupCount: 0,
         studentCount: 0,
       } as import("@/lib/types").Course;
       onComplete([mapped]);
+      setErrorMessage("");
       onClose();
     } catch (err: any) {
       console.error('CreateCourseByAdmin error:', err);
-      const msg = String(err?.message || '').toLowerCase();
-      if (msg.includes('unauthorized')) {
-        alert('Bạn cần đăng nhập với quyền admin để khởi tạo khóa học.');
-      } else {
-        alert('Có lỗi xảy ra khi khởi tạo. Vui lòng thử lại.');
+      const msgRaw = String(err?.message || '');
+      const msgLower = msgRaw.toLowerCase();
+      let displayMsg = msgRaw;
+      if (msgLower.includes('mã khóa học đã tồn tại')) {
+        displayMsg = 'Mã khóa học đã tồn tại.';
+      } else if (msgLower.includes('unauthorized')) {
+        displayMsg = 'Bạn cần đăng nhập với quyền admin để khởi tạo khóa học.';
+      } else if (!displayMsg) {
+        displayMsg = 'Có lỗi xảy ra khi khởi tạo. Vui lòng thử lại.';
       }
+      setErrorMessage(displayMsg);
+      toast({ variant: 'destructive', title: 'Lỗi', description: displayMsg });
     } finally {
       setIsSubmitting(false);
     }
@@ -101,6 +137,9 @@ export function CourseInitializationWizard({ isOpen, onClose, onComplete }: Wiza
             <Label htmlFor="description">Description</Label>
             <Input id="description" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Optional description" />
           </div>
+          {errorMessage && (
+            <p className="text-sm text-red-600" role="alert">{errorMessage}</p>
+          )}
         </div>
 
         <DialogFooter>

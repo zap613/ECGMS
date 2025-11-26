@@ -2,6 +2,10 @@
 
 import type React from "react";
 
+import { useState } from "react"
+import { useRouter } from "next/navigation"
+import { Button } from "@/components/ui/button"
+import { LayoutDashboard, BookOpen, Users, ClipboardList, Award, LogOut, Menu, X, User as UserIcon, UserX } from "lucide-react"
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -49,7 +53,6 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
     { name: "Dashboard", href: "/student/dashboard", icon: LayoutDashboard },
     { name: "My Group", href: "/student/group", icon: Users },
     { name: "My Tasks", href: "/student/tasks", icon: ClipboardList },
-    { name: "My Grades", href: "/student/grades", icon: Award },
     { name: "Profile", href: "/student/profile", icon: UserIcon },
   ];
 

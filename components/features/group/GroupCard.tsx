@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Users, Lock, LogIn, Send, Check, Loader2 } from "lucide-react"
+import { Users, Lock, LogIn, Send, Check, Loader2, Crown } from "lucide-react"
 
 const statusConfig = {
   open: { text: "Đang mở", variant: "secondary", icon: <LogIn className="w-3 h-3" /> },
@@ -44,10 +44,17 @@ export function GroupCard({ group, onJoin, onApply, isJoining = false, disableJo
       <CardHeader>
         <div className="flex items-start justify-between">
           <CardTitle>{group.groupName}</CardTitle>
-          <Badge variant={variant as any} className="flex items-center gap-1">
-            {icon}
-            {text}
-          </Badge>
+          <div className="flex items-center gap-2">
+            <Badge variant={variant as any} className="flex items-center gap-1">
+              {icon}
+              {text}
+            </Badge>
+            {group.memberCount === 0 && (
+              <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200 flex items-center gap-1">
+                <Crown className="w-3 h-3" /> Be a Leader!
+              </Badge>
+            )}
+          </div>
         </div>
         <CardDescription>Trưởng nhóm: {group.leaderName}</CardDescription>
       </CardHeader>
@@ -99,7 +106,7 @@ export function GroupCard({ group, onJoin, onApply, isJoining = false, disableJo
         {group.status === "open" && (
           <Button className="w-full" onClick={handleJoinClick} disabled={isJoining || disableJoin}>
             {isJoining && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-            Tham gia ngay
+            {group.memberCount === 0 ? "Khởi tạo nhóm & Làm Leader" : "Tham gia ngay"}
           </Button>
         )}
         {group.status === "lock" && (

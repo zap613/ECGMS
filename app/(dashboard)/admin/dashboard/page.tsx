@@ -13,6 +13,10 @@ import { useToast } from "@/components/ui/use-toast"
 import { BookOpen, Users, Layers, Clock, AlertCircle, BarChart3, PlusCircle, ClipboardList, Shuffle } from "lucide-react"
 import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { BarChart, Bar, CartesianGrid, XAxis, YAxis } from "recharts"
+import { Skeleton } from "@/components/ui/skeleton"
+import { CourseService } from "@/lib/api/courseService"
+import { GroupService } from "@/lib/api/groupService"
+import { UserService } from "@/lib/api/generated"
 
 type DashboardData = {
   activeCourses: number
@@ -66,6 +70,7 @@ export default function AdminDashboard() {
   const { toast } = useToast()
   const [user, setUser] = useState<any>(null)
   const [data, setData] = useState<DashboardData | null>(null)
+  const [loading, setLoading] = useState(false)
 
   useEffect(() => {
     const currentUser = getCurrentUser()
@@ -77,7 +82,44 @@ export default function AdminDashboard() {
   }, [router])
 
   useEffect(() => {
-    setData(mockDashboardData)
+    ;(async () => {
+      setLoading(true)
+      try {
+        const [courses, groups, users] = await Promise.all([
+          CourseService.getCourses(),
+          GroupService.getGroups(),
+          (async () => {
+            try { return await UserService.getApiUser() } catch { return [] }
+          })(),
+        ])
+        const normalizeStatus = (s: any): string => {
+          const v = typeof s === 'string' ? s.toLowerCase() : s
+          if (v === 0 || v === '0' || v === 'inactive' || v === 'closed') return 'Inactive'
+          return 'Active'
+        }
+        const activeCoursesList = (Array.isArray(courses) ? courses : []).filter(c => normalizeStatus((c as any).status) !== 'Inactive')
+        const totalGroups = (Array.isArray(groups) ? groups : []).length
+        const emptyGroups = (Array.isArray(groups) ? groups : []).filter(g => (g.memberCount || 0) === 0).length
+        const totalStudents = Array.isArray(users) ? users.filter((u: any) => String(u?.role?.roleName || '').toLowerCase() === 'student' || (u?.studentCourses?.length ?? 0) > 0).length : 0
+        const chartMap: Record<string, { courseCode: string, full: number, empty: number }> = {}
+        activeCoursesList.forEach(c => { chartMap[c.courseCode] = { courseCode: c.courseCode, full: 0, empty: 0 } })
+        ;(Array.isArray(groups) ? groups : []).forEach(g => {
+          const code = g.courseCode
+          if (chartMap[code]) {
+            if ((g.memberCount || 0) === 0) chartMap[code].empty += 1
+            else chartMap[code].full += 1
+          }
+        })
+        const courseProgress = Object.values(chartMap).map(x => ({ courseCode: x.courseCode, courseName: x.courseCode, assigned: x.full, unassigned: x.empty, totalStudents: 0 }))
+        const nearestDeadline = { courseCode: activeCoursesList[0]?.courseCode || '', courseName: activeCoursesList[0]?.courseName || '', deadline: new Date(Date.now() + 24*60*60*1000).toISOString() }
+        const attentionNeeded = { lowMemberGroups: (Array.isArray(groups) ? groups : []).filter(g => (g.memberCount || 0) > 0 && (g.memberCount || 0) < (g.maxMembers || 5)).slice(0, 5).map(g => ({ groupId: g.groupId, name: g.groupName, courseCode: g.courseCode, memberCount: g.memberCount, maxMembers: g.maxMembers })), missingMentorCourses: [] }
+        setData({ activeCourses: activeCoursesList.length, students: { total: totalStudents, unassigned: 0 }, groups: { total: totalGroups, empty: emptyGroups }, nearestDeadline, courseProgress, attentionNeeded })
+      } catch {
+        setData(mockDashboardData)
+      } finally {
+        setLoading(false)
+      }
+    })()
   }, [])
 
   const progressData = useMemo(() => {
@@ -89,7 +131,7 @@ export default function AdminDashboard() {
     }))
   }, [data])
 
-  if (!user || !data) return null
+  if (!user) return null
 
   return (
     <DashboardLayout role="admin">
@@ -106,8 +148,8 @@ export default function AdminDashboard() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Active Courses</p>
-                  <p className="text-3xl font-bold text-gray-900 mt-2">{data.activeCourses}</p>
+                  <p className="text-sm font-medium text-gray-600">Courses</p>
+                  {loading ? <Skeleton className="h-7 w-16 mt-2" /> : <p className="text-3xl font-bold text-gray-900 mt-2">{data?.activeCourses ?? 0}</p>}
                 </div>
                 <div className="bg-blue-50 p-3 rounded-lg">
                   <BookOpen className="w-6 h-6 text-blue-600" />
@@ -120,8 +162,8 @@ export default function AdminDashboard() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Unassigned Students</p>
-                  <p className="text-3xl font-bold text-red-600 mt-2">{data.students.unassigned}</p>
+                  <p className="text-sm font-medium text-gray-600">Total Students</p>
+                  {loading ? <Skeleton className="h-7 w-20 mt-2" /> : <p className="text-3xl font-bold text-red-600 mt-2">{data?.students.total ?? 0}</p>}
                 </div>
                 <div className="bg-red-50 p-3 rounded-lg">
                   <Users className="w-6 h-6 text-red-600" />
@@ -135,7 +177,7 @@ export default function AdminDashboard() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600">Total Groups</p>
-                  <p className="text-3xl font-bold text-gray-900 mt-2">{data.groups.total}</p>
+                  {loading ? <Skeleton className="h-7 w-16 mt-2" /> : <p className="text-3xl font-bold text-gray-900 mt-2">{data?.groups.total ?? 0}</p>}
                 </div>
                 <div className="bg-emerald-50 p-3 rounded-lg">
                   <Layers className="w-6 h-6 text-emerald-600" />
@@ -148,13 +190,11 @@ export default function AdminDashboard() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Nearest Deadline</p>
-                  <p className="text-sm text-gray-900 mt-2">
-                    {data.nearestDeadline.courseCode} - {formatCountdown(data.nearestDeadline.deadline)}
-                  </p>
+                  <p className="text-sm font-medium text-gray-600">Empty Groups</p>
+                  {loading ? <Skeleton className="h-5 w-16 mt-2" /> : <p className="text-sm text-gray-900 mt-2">{data?.groups.empty ?? 0}</p>}
                 </div>
                 <div className="bg-amber-50 p-3 rounded-lg">
-                  <Clock className="w-6 h-6 text-amber-600" />
+                  <AlertCircle className="w-6 h-6 text-amber-600" />
                 </div>
               </div>
             </CardContent>
@@ -212,7 +252,7 @@ export default function AdminDashboard() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {data.attentionNeeded.lowMemberGroups.map((g) => (
+                    {(data?.attentionNeeded?.lowMemberGroups ?? []).map((g) => (
                       <TableRow key={g.groupId}>
                         <TableCell className="font-medium">{g.name}</TableCell>
                         <TableCell>{g.courseCode}</TableCell>
@@ -239,7 +279,7 @@ export default function AdminDashboard() {
               <div>
                 <p className="text-sm font-medium text-gray-700 mb-2">Môn chưa có Mentor</p>
                 <div className="flex flex-wrap gap-2">
-                  {data.attentionNeeded.missingMentorCourses.map((c) => (
+                  {(data?.attentionNeeded?.missingMentorCourses ?? []).map((c) => (
                     <Badge key={c.courseCode} variant="secondary">
                       {c.courseCode}
                     </Badge>

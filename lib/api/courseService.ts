@@ -41,9 +41,8 @@ export class CourseService {
   // GET /api/Course
   static async getCourses(): Promise<Course[]> {
     try {
-      console.log("[CourseService] Fetching courses via proxy...");
       const ts = Date.now();
-      const res = await fetch(`/api/proxy/Course/GetListCourses?PageNumber=1&PageSize=1000&_t=${ts}` , {
+      const res = await fetch(`/api/proxy/Course/GetListCourses?PageNumber=1&PageSize=1000&_t=${ts}`, {
         cache: 'no-store',
         next: { revalidate: 0 },
         headers: {
@@ -57,11 +56,17 @@ export class CourseService {
         throw new Error(`List failed: ${res.status} ${res.statusText} ${text}`);
       }
       const response = await res.json();
-      const items = response.items || [];
+      const items = Array.isArray(response) ? response : (response.items || []);
       return items.map(mapApiCourseToFeCourse);
     } catch (error) {
-      console.error("Failed to fetch courses:", error);
-      return [];
+      try {
+        const response = await GeneratedCourseService.getApiCourse({ pageNumber: 1, pageSize: 1000 });
+        const items = Array.isArray(response as any) ? (response as any) : (response.items || []);
+        return items.map(mapApiCourseToFeCourse);
+      } catch (e) {
+        console.error("Failed to fetch courses:", e);
+        return [];
+      }
     }
   }
 
@@ -124,11 +129,21 @@ export class CourseService {
   // PUT /api/Course/{id}
   static async updateCourse(id: string, courseData: Partial<Course>): Promise<Course> {
     try {
-      const requestBody: UpdateCourseViewModel = {
-        courseCode: courseData.courseCode || "",
-        courseName: courseData.courseName || "",
-        description: courseData.description,
+      const current = await this.getCourseById(id).catch(() => null);
+      const normalizeStatusStr = (s: any): 'Active' | 'Inactive' => {
+        const v = (typeof s === 'string' ? s.toLowerCase() : s);
+        if (v === 1 || v === '1' || v === 'active' || v === 'open') return 'Active';
+        if (v === 0 || v === '0' || v === 'inactive' || v === 'closed') return 'Inactive';
+        return 'Active';
       };
+      const statusStr = normalizeStatusStr((courseData as any).status ?? (current as any)?.status);
+      const statusNum = statusStr === 'Active' ? 1 : 0;
+      const baseBody: any = {
+        courseCode: courseData.courseCode || (current as any)?.courseCode || "",
+        courseName: courseData.courseName || (current as any)?.courseName || "",
+        description: courseData.description ?? (current as any)?.description ?? null,
+      };
+      const requestBody: any = { ...baseBody, status: statusStr, Status: statusNum };
 
       // SỬA LỖI: Backend dùng endpoint khác: PUT /api/Course/UpdateCourseBy/{id}
       const res = await fetch(`/api/proxy/Course/UpdateCourseBy/${id}`, {
@@ -140,7 +155,20 @@ export class CourseService {
 
       if (!res.ok) {
         const text = await res.text().catch(() => '');
-        throw new Error(`Update failed: ${res.status} ${res.statusText} ${text}`);
+        if (/Status/i.test(text)) {
+          const retryRes = await fetch(`/api/proxy/Course/UpdateCourseBy/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ...baseBody, Status: statusNum }),
+            cache: 'no-store',
+          });
+          if (!retryRes.ok) {
+            const retryText = await retryRes.text().catch(() => '');
+            throw new Error(`Update failed: ${retryRes.status} ${retryRes.statusText} ${retryText}`);
+          }
+        } else {
+          throw new Error(`Update failed: ${res.status} ${res.statusText} ${text}`);
+        }
       }
 
       // Sau khi cập nhật, lấy lại course để đồng bộ UI
